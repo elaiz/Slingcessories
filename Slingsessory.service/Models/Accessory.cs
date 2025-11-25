@@ -1,0 +1,18 @@
+namespace Slingsessory.service.Models;
+
+public class Accessory
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? PictureUrl { get; set; }   // now nullable
+    public int Units { get; set; }
+    public decimal Price { get; set; }
+    public string? Url { get; set; }          // now nullable
+    public bool Wishlist { get; set; }
+
+    public int CategoryId { get; set; }
+    public Category? Category { get; set; }
+
+    public int? SubcategoryId { get; set; }
+    public Subcategory? Subcategory { get; set; }
+}

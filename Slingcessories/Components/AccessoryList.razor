@@ -1,0 +1,399 @@
+@using Slingcessories.Models
+@inject HttpClient Http
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
+
+<PageTitle>@(Wishlist ? "Wishlist" : "Accessories")</PageTitle>
+<h1>@(Wishlist ? "Wishlist" : "Accessories")</h1>
+
+<div class="container my-4">
+
+    @if (isLoading)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    else if (FilteredItems.Count == 0)
+    {
+        <p>No accessories to display.</p>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+            @foreach (var item in FilteredItems)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <img class="card-img-top" src="@item.PictureUrl" alt="@item.Title" />
+                        <div class="card-body">
+                            <h5 class="card-title">@item.Title</h5>
+                            <p class="card-text text-muted mb-1">
+                                <strong>Category:</strong> @item.Category
+                            </p>
+                            @if (!string.IsNullOrWhiteSpace(item.Subcategory))
+                            {
+                                <p class="card-text text-muted mb-1">
+                                    <strong>Subcategory:</strong> @item.Subcategory
+                                </p>
+                            }
+                            <p class="card-text mb-1"><strong>Units:</strong> @item.Units</p>
+                            <p class="card-text mb-2"><strong>Price:</strong> @item.Price.ToString("C")</p>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 d-flex justify-content-end">
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => OpenEditAsync(item)">
+                                <span class="bi bi-pencil-square me-1"></span>Edit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* Edit Modal *@
+@if (showEditModal && editingItem is not null)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Accessory</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelEdit"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(modalError))
+                    {
+                        <div class="alert alert-danger" role="alert">@modalError</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input class="form-control" @bind="editModel.Title" @bind:event="oninput" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Picture URL</label>
+                        <input class="form-control" @bind="editModel.PictureUrl" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Product URL</label>
+                        <input class="form-control" @bind="editModel.Url" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Units</label>
+                            <input type="number" class="form-control" @bind="editModel.Units" min="0" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Price</label>
+                            <input type="number" class="form-control" @bind="editModel.Price" step="0.01" min="0" />
+                        </div>
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="wishlistCheck" @bind="editModel.Wishlist" />
+                                <label class="form-check-label" for="wishlistCheck">
+                                    Wishlist
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" @bind="editModel.CategoryId" @bind:event="onchange">
+                                <option value="0">Select a category</option>
+                                @foreach (var c in categories)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Subcategory</label>
+                            <select class="form-select" @bind="editModel.SubcategoryId" disabled="@(editModel.CategoryId <= 0)">
+                                <option value="">None</option>
+                                @foreach (var sc in subcategories)
+                                {
+                                    <option value="@sc.Id">@sc.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelEdit" disabled="@isSaving">Cancel</button>
+                    <button class="btn btn-primary"
+                            @onclick="SaveEditAsync"
+                            disabled="@isSaving || string.IsNullOrWhiteSpace(editModel.Title) || editModel.CategoryId <= 0">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<Accessory> Items { get; set; } = new();
+    private bool isLoading = true;
+    private string? error;
+
+    private List<Accessory> FilteredItems => Items.Where(a => a.Wishlist == Wishlist).ToList();
+
+    [Parameter]
+    public bool Wishlist { get; set; }
+
+    // Edit modal state
+    private bool showEditModal;
+    private bool isSaving;
+    private string? modalError;
+    private Accessory? editingItem;
+
+    // Lookup data
+    private List<CategoryOption> categories = new();
+    private List<SubcategoryOption> subcategories = new();
+
+    // Edit DTO (matches server AccessoryDto shape we PUT)
+    private AccessoryEditDto editModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            error = null;
+            isLoading = true;
+
+            var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
+            var cacheKey = $"accessories_{Wishlist}";
+
+            if (online)
+            {
+                var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
+                var url = string.IsNullOrEmpty(baseUrl)
+                    ? $"api/accessories?wishlist={Wishlist.ToString().ToLower()}"
+                    : $"{baseUrl}/api/accessories?wishlist={Wishlist.ToString().ToLower()}";
+
+                var data = await Http.GetFromJsonAsync<List<Accessory>>(url);
+                Items = data ?? new List<Accessory>();
+
+                // Cache latest payload offline
+                await JS.InvokeVoidAsync("indexedDbHelper.set", cacheKey, Items);
+
+                // Preload categories for editing
+                await LoadCategoriesAsync();
+            }
+            else
+            {
+                var cached = await JS.InvokeAsync<List<Accessory>?>("indexedDbHelper.get", cacheKey);
+                Items = cached ?? new List<Accessory>();
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load accessories: {ex.Message}";
+            Items = new List<Accessory>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenEditAsync(Accessory item)
+    {
+        editingItem = item;
+        modalError = null;
+        showEditModal = true;
+
+        try
+        {
+            var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
+            if (!online)
+            {
+                modalError = "You're offline. Connect to the internet to edit.";
+                return;
+            }
+
+            await LoadCategoriesAsync();
+
+            var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
+            var getUrl = string.IsNullOrEmpty(baseUrl)
+                ? $"api/accessories/{item.Id}"
+                : $"{baseUrl}/api/accessories/{item.Id}";
+
+            // Pull full DTO (includes CategoryId/SubcategoryId)
+            var dto = await Http.GetFromJsonAsync<AccessoryEditDto>(getUrl);
+            if (dto is null)
+            {
+                modalError = "Failed to load the accessory for editing.";
+                return;
+            }
+
+            editModel = dto;
+
+            // Load subcategories for selected category
+            subcategories.Clear();
+            if (editModel.CategoryId > 0)
+            {
+                await LoadSubcategoriesAsync(editModel.CategoryId);
+            }
+        }
+        catch (Exception ex)
+        {
+            modalError = $"Failed to open editor: {ex.Message}";
+        }
+    }
+
+    private void CancelEdit()
+    {
+        showEditModal = false;
+        editingItem = null;
+        modalError = null;
+        subcategories.Clear();
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (editingItem is null) return;
+
+        modalError = null;
+
+        try
+        {
+            isSaving = true;
+
+            var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
+            if (!online)
+            {
+                modalError = "You're offline. Connect to the internet to save changes.";
+                return;
+            }
+
+            var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
+            var url = string.IsNullOrEmpty(baseUrl)
+                ? $"api/accessories/{editModel.Id}"
+                : $"{baseUrl}/api/accessories/{editModel.Id}";
+
+            var response = await Http.PutAsJsonAsync(url, editModel);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var details = await response.Content.ReadAsStringAsync();
+                modalError = $"Failed to update accessory: {response.ReasonPhrase}. {details}";
+                return;
+            }
+
+            // Apply edits locally for instant UI feedback
+            editingItem.Title = editModel.Title;
+            editingItem.PictureUrl = editModel.PictureUrl;
+            editingItem.Units = editModel.Units;
+            editingItem.Price = editModel.Price;
+            editingItem.Url = editModel.Url;
+            editingItem.Wishlist = editModel.Wishlist;
+
+            // Map selected IDs to display names
+            var catName = categories.FirstOrDefault(c => c.Id == editModel.CategoryId)?.Name;
+            string? subcatName = null;
+            if (editModel.SubcategoryId is int sid && sid > 0)
+            {
+                subcatName = subcategories.FirstOrDefault(s => s.Id == sid)?.Name;
+            }
+            editingItem.Category = catName ?? editingItem.Category;
+            editingItem.Subcategory = subcatName;
+
+            // Refresh offline cache for current view
+            var cacheKey = $"accessories_{Wishlist}";
+            await JS.InvokeVoidAsync("indexedDbHelper.set", cacheKey, Items);
+
+            // Close modal
+            showEditModal = false;
+            editingItem = null;
+        }
+        catch (Exception ex)
+        {
+            modalError = $"Unexpected error updating accessory: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        if (categories.Count > 0) return;
+
+        var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
+        var url = string.IsNullOrEmpty(baseUrl) ? "api/categories" : $"{baseUrl}/api/categories";
+
+        var data = await Http.GetFromJsonAsync<List<CategoryOption>>(url);
+        categories = data ?? new();
+    }
+
+    private async Task LoadSubcategoriesAsync(int categoryId)
+    {
+        var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
+        var url = string.IsNullOrEmpty(baseUrl)
+            ? $"api/categories/{categoryId}/subcategories"
+            : $"{baseUrl}/api/categories/{categoryId}/subcategories";
+
+        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(url);
+        subcategories = data ?? new();
+    }
+
+    private async Task OnCategoryChanged(ChangeEventArgs _)
+    {
+        // When category changes, reload subcategories and reset selection
+        if (editModel.CategoryId > 0)
+        {
+            await LoadSubcategoriesAsync(editModel.CategoryId);
+        }
+        else
+        {
+            subcategories.Clear();
+        }
+        editModel.SubcategoryId = null;
+        StateHasChanged();
+    }
+
+    // Simple option DTOs for lookups
+    private sealed class CategoryOption
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+    private sealed class SubcategoryOption
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    // Matches server AccessoryDto contract (camelCase over the wire)
+    private sealed class AccessoryEditDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? PictureUrl { get; set; }
+        public int Units { get; set; }
+        public decimal Price { get; set; }
+        public string? Url { get; set; }
+        public bool Wishlist { get; set; }
+        public int CategoryId { get; set; }
+        public int? SubcategoryId { get; set; }
+        public string? Category { get; set; }   // not used for PUT, may arrive on GET
+        public string? Subcategory { get; set; } // not used for PUT, may arrive on GET
+    }
+}

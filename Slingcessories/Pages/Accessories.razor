@@ -1,0 +1,9 @@
+@page "/accessories"
+@page "/accessories/{Wishlist:bool}"
+
+<AccessoryList Wishlist="@Wishlist" />
+
+@code {
+    [Parameter]
+    public bool Wishlist { get; set; } = false;
+}

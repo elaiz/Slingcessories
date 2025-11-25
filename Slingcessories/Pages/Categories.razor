@@ -1,0 +1,341 @@
+@page "/categories"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>Categories</PageTitle>
+
+<div class="mb-2">
+    <NavLink href="/settings" class="btn btn-link p-0 text-decoration-none" title="Back to Settings">
+        &larr; Back to Settings
+    </NavLink>
+</div>
+
+<h1>Categories</h1>
+
+<div class="mb-3 d-flex gap-2">
+    <button class="btn btn-success btn-sm" @onclick="ShowCreateModal">+ New Category</button>
+    <button class="btn btn-outline-primary btn-sm"
+            @onclick="Reload"
+            disabled="@saving || isLoading">Refresh</button>
+</div>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (isLoading)
+{
+    <p>Loading categories...</p>
+}
+else
+{
+    @if (categories.Count == 0)
+    {
+        <p>No categories found.</p>
+    }
+    else
+    {
+        <ul class="list-group mb-3">
+            @foreach (var c in categories)
+            {
+                <li class="list-group-item">
+                    @if (editingId == c.Id)
+                    {
+                        <EditForm Model="editModel" OnValidSubmit="SaveEditAsync">
+                            <DataAnnotationsValidator />
+                            <div class="d-flex align-items-center gap-2">
+                                <InputText class="form-control form-control-sm w-auto"
+                                           @bind-Value="editModel.Name" />
+                                <button type="submit"
+                                        class="btn btn-sm btn-primary"
+                                        disabled="@saving">
+                                    @(saving ? "Saving..." : "Save")
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-secondary"
+                                        @onclick="CancelEdit"
+                                        disabled="@saving">Cancel</button>
+                            </div>
+                            <ValidationMessage For="() => editModel.Name" />
+                        </EditForm>
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>@c.Name</span>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" @onclick="() => BeginEdit(c)">Edit</button>
+                                @if (confirmDeleteId == c.Id)
+                                {
+                                    <button class="btn btn-danger" disabled="@saving" @onclick="() => DeleteAsync(c.Id)">Confirm</button>
+                                    <button class="btn btn-outline-secondary" disabled="@saving" @onclick="() => confirmDeleteId = null">Cancel</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-outline-danger" disabled="@saving" @onclick="() => confirmDeleteId = c.Id">Delete</button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+}
+
+@if (showCreateModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Category</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelCreate"></button>
+                </div>
+                <EditForm Model="createModel" OnValidSubmit="CreateAsync">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label class="form-label">Name</label>
+                            <InputText class="form-control form-control-sm"
+                                       @bind-Value="createModel.Name"
+                                       @onkeydown="HandleCreateKeyDown" />
+                            <ValidationMessage For="() => createModel.Name" />
+                        </div>
+                        @if (createError is not null)
+                        {
+                            <div class="alert alert-danger py-1 px-2 mb-2">@createError</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit"
+                                class="btn btn-primary btn-sm"
+                                disabled="@savingCreate">
+                            @(savingCreate ? "Saving..." : "OK")
+                        </button>
+                        <button type="button"
+                                class="btn btn-secondary btn-sm"
+                                @onclick="CancelCreate"
+                                disabled="@savingCreate">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CategoryDto> categories = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private int? editingId;
+    private CategoryEditModel? editModel;
+    private bool saving;
+    private int? confirmDeleteId;
+
+    // Create modal state
+    private bool showCreateModal;
+    private CreateCategoryModel createModel = new();
+    private bool savingCreate;
+    private string? createError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var result = await Http.GetFromJsonAsync<List<CategoryDto>>("api/Categories");
+            categories = result ?? [];
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load categories: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task Reload()
+    {
+        if (saving || savingCreate) return;
+        isLoading = true;
+        errorMessage = null;
+        categories.Clear();
+        await LoadAsync();
+    }
+
+    /* Edit */
+    private void BeginEdit(CategoryDto c)
+    {
+        if (saving || savingCreate) return;
+        editingId = c.Id;
+        editModel = new CategoryEditModel { Id = c.Id, Name = c.Name };
+        confirmDeleteId = null;
+    }
+
+    private void CancelEdit()
+    {
+        if (saving) return;
+        editingId = null;
+        editModel = null;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (editModel is null || editingId != editModel.Id) return;
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            var dto = new CategoryDto(editModel.Id, editModel.Name.Trim());
+            var response = await Http.PutAsJsonAsync($"api/Categories/{dto.Id}", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var index = categories.FindIndex(c => c.Id == dto.Id);
+                if (index >= 0) categories[index] = dto;
+                CancelEdit();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Update failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Update error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    /* Delete */
+    private async Task DeleteAsync(int id)
+    {
+        saving = true;
+        errorMessage = null;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/Categories/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                categories.RemoveAll(c => c.Id == id);
+                if (editingId == id) CancelEdit();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Delete failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Delete error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+            confirmDeleteId = null;
+        }
+    }
+
+    /* Create */
+    private void ShowCreateModal()
+    {
+        createError = null;
+        createModel = new();
+        showCreateModal = true;
+    }
+
+    private void CancelCreate()
+    {
+        if (savingCreate) return;
+        showCreateModal = false;
+        createModel = new();
+        createError = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        bool success = false;
+        savingCreate = true;
+        createError = null;
+        try
+        {
+            var trimmed = createModel.Name.Trim();
+            var payload = new CreateCategoryPayload { Name = trimmed };
+            var response = await Http.PostAsJsonAsync("api/Categories", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<CategoryDto>();
+                if (created is not null)
+                {
+                    categories.Add(created);
+                    categories = categories
+                        .OrderBy(c => c.Name)
+                        .ToList();
+                }
+                success = true;
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                createError = $"Create failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            createError = $"Create error: {ex.Message}";
+        }
+        finally
+        {
+            savingCreate = false;
+            if (success)
+            {
+                CancelCreate();
+            }
+        }
+    }
+
+    private void HandleCreateKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CancelCreate();
+        }
+    }
+
+    /* Records / Models */
+    private sealed record CategoryDto(int Id, string Name);
+
+    private sealed class CategoryEditModel
+    {
+        public int Id { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateCategoryModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateCategoryPayload
+    {
+        public string Name { get; set; } = string.Empty;
+    }
+}
