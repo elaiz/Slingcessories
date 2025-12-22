@@ -37,5 +37,4 @@ public class CategoriesController(AppDbContext db) : ControllerBase
     }
 
     public record CategoryDto(int Id, string Name);
-    public record SubcategoryDto(int Id, string Name, int CategoryId);
 }
