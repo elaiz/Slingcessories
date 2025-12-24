@@ -1,6 +1,0 @@
-@Slingsessory.service_HostAddress = http://localhost:5223
-
-GET {{Slingsessory.service_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
