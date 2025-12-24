@@ -18,4 +18,7 @@ public class Accessory
     public decimal Price { get; set; }
     public string Url { get; set; } = string.Empty;
     public bool Wishlist { get; set; }
+    
+    [JsonPropertyName("slinghotDescriptions")]
+    public List<string>? SlinghotDescriptions { get; set; }
 }

@@ -291,10 +291,10 @@ else
         errorMessage = null;
         try
         {
-            var catResult = await Http.GetFromJsonAsync<List<CategoryDto>>("api/Categories");
+            var catResult = await Http.GetFromJsonAsync<List<CategoryDto>>("api/categories");
             categories = catResult ?? [];
 
-            var subResult = await Http.GetFromJsonAsync<List<SubcategoryDto>>("api/Subcategories");
+            var subResult = await Http.GetFromJsonAsync<List<SubcategoryDto>>("api/subcategories");
             subcategories = subResult ?? [];
         }
         catch (Exception ex)
@@ -382,7 +382,7 @@ else
         try
         {
             var dto = new CategoryDto(editCategoryModel.Id, editCategoryModel.Name.Trim());
-            var response = await Http.PutAsJsonAsync($"api/Categories/{dto.Id}", dto);
+            var response = await Http.PutAsJsonAsync($"api/categories/{dto.Id}", dto);
 
             if (response.IsSuccessStatusCode)
             {
@@ -413,7 +413,7 @@ else
         errorMessage = null;
         try
         {
-            var response = await Http.DeleteAsync($"api/Categories/{id}");
+            var response = await Http.DeleteAsync($"api/categories/{id}");
             if (response.IsSuccessStatusCode)
             {
                 categories.RemoveAll(c => c.Id == id);
@@ -463,7 +463,7 @@ else
         {
             var trimmed = createCategoryModel.Name.Trim();
             var payload = new CreateCategoryPayload { Name = trimmed };
-            var response = await Http.PostAsJsonAsync("api/Categories", payload);
+            var response = await Http.PostAsJsonAsync("api/categories", payload);
 
             if (response.IsSuccessStatusCode)
             {
@@ -522,7 +522,7 @@ else
         try
         {
             var dto = new SubcategoryDto(editSubcategoryModel.Id, editSubcategoryModel.Name.Trim(), editSubcategoryModel.CategoryId);
-            var response = await Http.PutAsJsonAsync($"api/Subcategories/{dto.Id}", dto);
+            var response = await Http.PutAsJsonAsync($"api/subcategories/{dto.Id}", dto);
 
             if (response.IsSuccessStatusCode)
             {
@@ -553,7 +553,7 @@ else
         errorMessage = null;
         try
         {
-            var response = await Http.DeleteAsync($"api/Subcategories/{id}");
+            var response = await Http.DeleteAsync($"api/subcategories/{id}");
             if (response.IsSuccessStatusCode)
             {
                 subcategories.RemoveAll(s => s.Id == id);
@@ -610,7 +610,7 @@ else
         {
             var trimmed = createSubcategoryModel.Name.Trim();
             var payload = new CreateSubcategoryPayload { Name = trimmed, CategoryId = selectedCategoryId.Value };
-            var response = await Http.PostAsJsonAsync("api/Subcategories", payload);
+            var response = await Http.PostAsJsonAsync("api/subcategories", payload);
 
             if (response.IsSuccessStatusCode)
             {

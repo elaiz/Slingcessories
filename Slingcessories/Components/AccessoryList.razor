@@ -7,7 +7,7 @@
 <h1>@(Wishlist ? "Wishlist" : "Accessories")</h1>
 
 <div class="mb-3">
-    <button class="btn btn-success btn-sm" @onclick="ShowAddModal">
+    <button class="btn btn-success btn-sm" >
         <span class="bi bi-plus-circle me-1"></span>Add Accessory
     </button>
 </div>
@@ -43,6 +43,12 @@
                             {
                                 <p class="card-text text-muted mb-1">
                                     <strong>Subcategory:</strong> @item.Subcategory
+                                </p>
+                            }
+                            @if (item.SlinghotDescriptions != null && item.SlinghotDescriptions.Any())
+                            {
+                                <p class="card-text text-muted mb-1">
+                                    <strong>Slingshots:</strong> @string.Join(", ", item.SlinghotDescriptions)
                                 </p>
                             }
                             <p class="card-text mb-1"><strong>Units:</strong> @item.Units</p>
@@ -139,6 +145,32 @@
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">Slingshots</label>
+                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                            @if (slingshots.Any())
+                            {
+                                @foreach (var sl in slingshots)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="sling_@sl.Id" 
+                                               checked="@(editModel.SlinghotIds != null && editModel.SlinghotIds.Contains(sl.Id))"
+                                               @onchange="@(e => ToggleSlingshot(sl.Id, (bool)e.Value!))" />
+                                        <label class="form-check-label" for="sling_@sl.Id">
+                                            @sl.Year @sl.Model (@sl.Color)
+                                        </label>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0 small">No slingshots available</p>
+                            }
+                        </div>
+                    </div>
+
                     @* Debug info - remove after testing *@
                     @* <div class="alert alert-info">
                         <small>
@@ -186,6 +218,7 @@
     // Lookup data
     private List<CategoryOption> categories = new();
     private List<SubcategoryOption> subcategories = new();
+    private List<SlingOption> slingshots = new();
 
     // Edit DTO (matches server AccessoryDto shape we PUT)
     private AccessoryEditDto editModel = new();
@@ -202,12 +235,8 @@
 
             if (online)
             {
-                var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
-                var url = string.IsNullOrEmpty(baseUrl)
-                    ? $"api/accessories?wishlist={Wishlist.ToString().ToLower()}"
-                    : $"{baseUrl}/api/accessories?wishlist={Wishlist.ToString().ToLower()}";
-
-                var data = await Http.GetFromJsonAsync<List<Accessory>>(url);
+                // Use relative URL - HttpClient already has BaseAddress set
+                var data = await Http.GetFromJsonAsync<List<Accessory>>($"api/accessories?wishlist={Wishlist.ToString().ToLower()}");
                 Items = data ?? new List<Accessory>();
 
                 // Cache latest payload offline
@@ -241,6 +270,9 @@
 
         try
         {
+            // Show debug info about the item being edited
+            System.Diagnostics.Debug.WriteLine($"Opening edit for accessory ID: {item.Id}, Title: {item.Title}");
+
             var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
             if (!online)
             {
@@ -249,19 +281,35 @@
             }
 
             await LoadCategoriesAsync();
+            await LoadSlingshotsAsync();
 
-            var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
-            var getUrl = string.IsNullOrEmpty(baseUrl)
-                ? $"api/accessories/{item.Id}"
-                : $"{baseUrl}/api/accessories/{item.Id}";
+            // Use relative URL since HttpClient already has BaseAddress configured
+            var getUrl = $"api/accessories/{item.Id}";
 
-            // Pull full DTO (includes CategoryId/SubcategoryId)
-            var dto = await Http.GetFromJsonAsync<AccessoryEditDto>(getUrl);
-            if (dto is null)
+            System.Diagnostics.Debug.WriteLine($"Fetching from URL: {getUrl}");
+
+            // Pull full DTO (includes CategoryId/SubcategoryId/SlinghotIds)
+            var response = await Http.GetAsync(getUrl);
+            
+            System.Diagnostics.Debug.WriteLine($"Response Status: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
             {
-                modalError = "Failed to load the accessory for editing.";
+                var errorContent = await response.Content.ReadAsStringAsync();
+                modalError = $"API Error: {response.StatusCode} ({response.ReasonPhrase})\nURL: {getUrl}\nDetails: {errorContent}";
+                System.Diagnostics.Debug.WriteLine($"API Error: {errorContent}");
                 return;
             }
+
+            var dto = await response.Content.ReadFromJsonAsync<AccessoryEditDto>();
+            if (dto is null)
+            {
+                modalError = "Failed to deserialize the accessory data.";
+                System.Diagnostics.Debug.WriteLine("DTO deserialization returned null");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"Successfully loaded DTO for ID: {dto.Id}");
 
             editModel = dto;
 
@@ -275,6 +323,7 @@
         catch (Exception ex)
         {
             modalError = $"Failed to open editor: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"Exception in OpenEditAsync: {ex}");
         }
     }
 
@@ -303,10 +352,8 @@
                 return;
             }
 
-            var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
-            var url = string.IsNullOrEmpty(baseUrl)
-                ? $"api/accessories/{editModel.Id}"
-                : $"{baseUrl}/api/accessories/{editModel.Id}";
+            // Use relative URL since HttpClient already has BaseAddress configured
+            var url = $"api/accessories/{editModel.Id}";
 
             var response = await Http.PutAsJsonAsync(url, editModel);
 
@@ -357,22 +404,25 @@
     {
         if (categories.Count > 0) return;
 
-        var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
-        var url = string.IsNullOrEmpty(baseUrl) ? "api/categories" : $"{baseUrl}/api/categories";
-
-        var data = await Http.GetFromJsonAsync<List<CategoryOption>>(url);
+        // Use relative URL - HttpClient already has BaseAddress set
+        var data = await Http.GetFromJsonAsync<List<CategoryOption>>("api/categories");
         categories = data ?? new();
     }
 
     private async Task LoadSubcategoriesAsync(int categoryId)
     {
-        var baseUrl = Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
-        var url = string.IsNullOrEmpty(baseUrl)
-            ? $"api/categories/{categoryId}/subcategories"
-            : $"{baseUrl}/api/categories/{categoryId}/subcategories";
-
-        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(url);
+        // Use relative URL - HttpClient already has BaseAddress set
+        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>($"api/categories/{categoryId}/subcategories");
         subcategories = data ?? new();
+    }
+
+    private async Task LoadSlingshotsAsync()
+    {
+        if (slingshots.Count > 0) return;
+
+        // Use relative URL - HttpClient already has BaseAddress set
+        var data = await Http.GetFromJsonAsync<List<SlingOption>>("api/slingshots");
+        slingshots = data ?? new();
     }
 
     private async Task OnCategoryChanged()
@@ -389,6 +439,26 @@
         editModel.SubcategoryId = null;
     }
 
+    private void ToggleSlingshot(int slinghotId, bool isChecked)
+    {
+        if (editModel.SlinghotIds == null)
+        {
+            editModel.SlinghotIds = new List<int>();
+        }
+
+        if (isChecked)
+        {
+            if (!editModel.SlinghotIds.Contains(slinghotId))
+            {
+                editModel.SlinghotIds.Add(slinghotId);
+            }
+        }
+        else
+        {
+            editModel.SlinghotIds.Remove(slinghotId);
+        }
+    }
+
     // Simple option DTOs for lookups
     private sealed class CategoryOption
     {
@@ -399,6 +469,13 @@
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+    }
+    private sealed class SlingOption
+    {
+        public int Id { get; set; }
+        public int Year { get; set; }
+        public string Model { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
     }
 
     // Matches server AccessoryDto contract (camelCase over the wire)
@@ -413,11 +490,15 @@
         public bool Wishlist { get; set; }
         public int CategoryId { get; set; }
         public int? SubcategoryId { get; set; }
+        public List<int>? SlinghotIds { get; set; }
         
         [System.Text.Json.Serialization.JsonPropertyName("categoryName")]
         public string? CategoryName { get; set; }
         
         [System.Text.Json.Serialization.JsonPropertyName("subcategoryName")]
         public string? SubcategoryName { get; set; }
+        
+        [System.Text.Json.Serialization.JsonPropertyName("slinghotDescriptions")]
+        public List<string>? SlinghotDescriptions { get; set; }
     }
 }

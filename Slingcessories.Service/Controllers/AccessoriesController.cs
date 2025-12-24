@@ -22,31 +22,55 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
         var results = await query
             .Include(a => a.Category)
             .Include(a => a.Subcategory)
+            .Include(a => a.AccessorySlingshots)
+                .ThenInclude(as_s => as_s.Slingshot)
             .OrderBy(a => a.Title)
-            .Select(a => new AccessoryDto(
-                a.Id,
-                a.Title,
-                a.PictureUrl,
-                a.Units,
-                a.Price,
-                a.Url,
-                a.Wishlist,
-                a.CategoryId,
-                a.SubcategoryId,
-                a.Category!.Name,
-                a.Subcategory != null ? a.Subcategory.Name : null
-            ))
             .ToListAsync();
 
-        return Ok(results);
+        return Ok(results.Select(a => new AccessoryDto(
+            a.Id,
+            a.Title,
+            a.PictureUrl,
+            a.Units,
+            a.Price,
+            a.Url,
+            a.Wishlist,
+            a.CategoryId,
+            a.SubcategoryId,
+            a.Category!.Name,
+            a.Subcategory?.Name,
+            a.AccessorySlingshots.Select(as_s => as_s.SlingshotId).ToList(),
+            a.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList()
+        )));
     }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<AccessoryDto>> GetById(int id)
     {
-        var a = await db.Accessories.Include(x => x.Category).Include(x => x.Subcategory).FirstOrDefaultAsync(x => x.Id == id);
+        var a = await db.Accessories
+            .Include(x => x.Category)
+            .Include(x => x.Subcategory)
+            .Include(x => x.AccessorySlingshots)
+                .ThenInclude(as_s => as_s.Slingshot)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        
         if (a is null) return NotFound();
-        return new AccessoryDto(a.Id, a.Title, a.PictureUrl, a.Units, a.Price, a.Url, a.Wishlist, a.CategoryId, a.SubcategoryId, a.Category!.Name, a.Subcategory?.Name);
+        
+        return new AccessoryDto(
+            a.Id, 
+            a.Title, 
+            a.PictureUrl, 
+            a.Units, 
+            a.Price, 
+            a.Url, 
+            a.Wishlist, 
+            a.CategoryId, 
+            a.SubcategoryId, 
+            a.Category!.Name, 
+            a.Subcategory?.Name,
+            a.AccessorySlingshots.Select(as_s => as_s.SlingshotId).ToList(),
+            a.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList()
+        );
     }
 
     [HttpPost]
@@ -63,10 +87,47 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             CategoryId = dto.CategoryId,
             SubcategoryId = dto.SubcategoryId
         };
+        
         db.Accessories.Add(entity);
         await db.SaveChangesAsync();
-        var withNav = await db.Accessories.Include(x => x.Category).Include(x => x.Subcategory).FirstAsync(x => x.Id == entity.Id);
-        var result = new AccessoryDto(withNav.Id, withNav.Title, withNav.PictureUrl, withNav.Units, withNav.Price, withNav.Url, withNav.Wishlist, withNav.CategoryId, withNav.SubcategoryId, withNav.Category!.Name, withNav.Subcategory?.Name);
+
+        // Add slingshot relationships
+        if (dto.SlinghotIds != null && dto.SlinghotIds.Any())
+        {
+            foreach (var slinghotId in dto.SlinghotIds)
+            {
+                db.AccessorySlingshots.Add(new AccessorySlingshot
+                {
+                    AccessoryId = entity.Id,
+                    SlingshotId = slinghotId
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+        
+        var withNav = await db.Accessories
+            .Include(x => x.Category)
+            .Include(x => x.Subcategory)
+            .Include(x => x.AccessorySlingshots)
+                .ThenInclude(as_s => as_s.Slingshot)
+            .FirstAsync(x => x.Id == entity.Id);
+        
+        var result = new AccessoryDto(
+            withNav.Id, 
+            withNav.Title, 
+            withNav.PictureUrl, 
+            withNav.Units, 
+            withNav.Price, 
+            withNav.Url, 
+            withNav.Wishlist, 
+            withNav.CategoryId, 
+            withNav.SubcategoryId, 
+            withNav.Category!.Name, 
+            withNav.Subcategory?.Name,
+            withNav.AccessorySlingshots.Select(as_s => as_s.SlingshotId).ToList(),
+            withNav.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList()
+        );
+        
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, result);
     }
 
@@ -74,7 +135,10 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> Update(int id, AccessoryDto dto)
     {
         if (id != dto.Id) return BadRequest("ID mismatch");
-        var entity = await db.Accessories.FindAsync(id);
+        var entity = await db.Accessories
+            .Include(a => a.AccessorySlingshots)
+            .FirstOrDefaultAsync(a => a.Id == id);
+            
         if (entity is null) return NotFound();
 
         entity.Title = dto.Title;
@@ -85,6 +149,23 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
         entity.Wishlist = dto.Wishlist;
         entity.CategoryId = dto.CategoryId;
         entity.SubcategoryId = dto.SubcategoryId;
+
+        // Update slingshot relationships
+        // Remove existing relationships
+        entity.AccessorySlingshots.Clear();
+        
+        // Add new relationships
+        if (dto.SlinghotIds != null && dto.SlinghotIds.Any())
+        {
+            foreach (var slinghotId in dto.SlinghotIds)
+            {
+                entity.AccessorySlingshots.Add(new AccessorySlingshot
+                {
+                    AccessoryId = entity.Id,
+                    SlingshotId = slinghotId
+                });
+            }
+        }
 
         try
         {

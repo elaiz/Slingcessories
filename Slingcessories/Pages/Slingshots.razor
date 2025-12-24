@@ -1,0 +1,405 @@
+@page "/slingshots"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>Slingshots</PageTitle>
+
+<div class="mb-2">
+    <NavLink href="/settings" class="btn btn-link p-0 text-decoration-none" title="Back to Settings">
+        &larr; Back to Settings
+    </NavLink>
+</div>
+
+<h1>Slingshots</h1>
+
+<div class="mb-3 d-flex gap-2">
+    <button class="btn btn-success btn-sm" @onclick="ShowCreateModal">+ New Slingshot</button>
+    <button class="btn btn-outline-primary btn-sm"
+            @onclick="Reload"
+            disabled="@saving || isLoading">Refresh</button>
+</div>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (isLoading)
+{
+    <p>Loading slingshots...</p>
+}
+else
+{
+    @if (slingshots.Count == 0)
+    {
+        <p>No slingshots found.</p>
+    }
+    else
+    {
+        <ul class="list-group mb-3">
+            @foreach (var s in slingshots)
+            {
+                <li class="list-group-item">
+                    @if (editingId == s.Id)
+                    {
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="number" class="form-control form-control-sm w-auto" @bind="editModel.Year" placeholder="Year" style="max-width: 100px;" />
+                            <input type="text" class="form-control form-control-sm w-auto" @bind="editModel.Model" placeholder="Model" />
+                            <input type="text" class="form-control form-control-sm w-auto" @bind="editModel.Color" placeholder="Color" />
+                            <button class="btn btn-sm btn-primary"
+                                    @onclick="SaveEditAsync"
+                                    disabled="@saving">
+                                @(saving ? "Saving..." : "Save")
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-secondary"
+                                    @onclick="CancelEdit"
+                                    disabled="@saving">Cancel</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>@s.Year @s.Model</strong> <span class="text-muted">(@s.Color)</span></span>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-info" @onclick="() => ToggleAccessories(s.Id)">
+                                    <span class="bi bi-@(expandedSlingshots.Contains(s.Id) ? "eye-slash" : "eye") me-1"></span>
+                                    @(expandedSlingshots.Contains(s.Id) ? "Hide" : "Show") Accessories
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="() => BeginEdit(s)">Edit</button>
+                                @if (confirmDeleteId == s.Id)
+                                {
+                                    <button class="btn btn-danger" disabled="@saving" @onclick="() => DeleteAsync(s.Id)">Confirm</button>
+                                    <button class="btn btn-outline-secondary" disabled="@saving" @onclick="() => confirmDeleteId = null">Cancel</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-outline-danger" disabled="@saving" @onclick="() => confirmDeleteId = s.Id">Delete</button>
+                                }
+                            </div>
+                        </div>
+
+                        @* Show accessories for this slingshot *@
+                        @if (expandedSlingshots.Contains(s.Id))
+                        {
+                            var slingshotAccessories = GetAccessoriesForSlingshot(s.Id);
+                            @if (slingshotAccessories.Any())
+                            {
+                                <div class="mt-2 ms-4">
+                                    <h6 class="text-muted">Associated Accessories:</h6>
+                                    <ul class="list-unstyled">
+                                        @foreach (var acc in slingshotAccessories)
+                                        {
+                                            <li class="mb-1">
+                                                <span class="bi bi-tag me-1"></span>@acc.Title
+                                                <span class="text-muted small">(@acc.CategoryName)</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted ms-4 mt-2 mb-0 small">No accessories associated with this slingshot yet.</p>
+                            }
+                        }
+                    }
+                </li>
+            }
+        </ul>
+    }
+}
+
+@* Create Slingshot Modal *@
+@if (showCreateModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Slingshot</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelCreate"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Year</label>
+                        <input type="number" class="form-control form-control-sm"
+                               @bind="createModel.Year" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Model</label>
+                        <input type="text" class="form-control form-control-sm"
+                               @bind="createModel.Model"
+                               @onkeydown="HandleCreateKeyDown" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Color</label>
+                        <input type="text" class="form-control form-control-sm"
+                               @bind="createModel.Color" />
+                    </div>
+                    @if (createError is not null)
+                    {
+                        <div class="alert alert-danger py-1 px-2 mb-2">@createError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary btn-sm"
+                            @onclick="CreateAsync"
+                            disabled="@savingCreate">
+                        @(savingCreate ? "Saving..." : "OK")
+                    </button>
+                    <button type="button"
+                            class="btn btn-secondary btn-sm"
+                            @onclick="CancelCreate"
+                            disabled="@savingCreate">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SlinghotDto> slingshots = [];
+    private List<AccessoryInfoDto> accessories = [];
+    private HashSet<int> expandedSlingshots = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private int? editingId;
+    private SlinghotEditModel editModel = new();
+    private bool saving;
+    private int? confirmDeleteId;
+
+    // Create modal state
+    private bool showCreateModal;
+    private CreateSlinghotModel createModel = new();
+    private bool savingCreate;
+    private string? createError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            // Use relative URLs - HttpClient already has BaseAddress set
+            var slingshotResult = await Http.GetFromJsonAsync<List<SlinghotDto>>("api/slingshots");
+            slingshots = slingshotResult ?? [];
+
+            var accessoryResult = await Http.GetFromJsonAsync<List<AccessoryInfoDto>>("api/accessories");
+            accessories = accessoryResult ?? [];
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load slingshots: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleAccessories(int slinghotId)
+    {
+        if (expandedSlingshots.Contains(slinghotId))
+            expandedSlingshots.Remove(slinghotId);
+        else
+            expandedSlingshots.Add(slinghotId);
+    }
+
+    private List<AccessoryInfoDto> GetAccessoriesForSlingshot(int slinghotId)
+    {
+        return accessories
+            .Where(a => a.SlinghotIds != null && a.SlinghotIds.Contains(slinghotId))
+            .ToList();
+    }
+
+    private async Task Reload()
+    {
+        if (saving || savingCreate) return;
+        slingshots.Clear();
+        await LoadAsync();
+    }
+
+    /* Edit */
+    private void BeginEdit(SlinghotDto s)
+    {
+        if (saving || savingCreate) return;
+        editingId = s.Id;
+        editModel = new SlinghotEditModel { Id = s.Id, Year = s.Year, Model = s.Model, Color = s.Color };
+        confirmDeleteId = null;
+    }
+
+    private void CancelEdit()
+    {
+        if (saving) return;
+        editingId = null;
+        editModel = new();
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (editingId != editModel.Id) return;
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            var dto = new SlinghotDto(editModel.Id, editModel.Year, editModel.Model.Trim(), editModel.Color.Trim());
+            // Use relative URL
+            var response = await Http.PutAsJsonAsync($"api/slingshots/{dto.Id}", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var index = slingshots.FindIndex(s => s.Id == dto.Id);
+                if (index >= 0) slingshots[index] = dto;
+                CancelEdit();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Update failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Update error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    /* Delete */
+    private async Task DeleteAsync(int id)
+    {
+        saving = true;
+        errorMessage = null;
+        try
+        {
+            // Use relative URL
+            var response = await Http.DeleteAsync($"api/slingshots/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                slingshots.RemoveAll(s => s.Id == id);
+                if (editingId == id) CancelEdit();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Delete failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Delete error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+            confirmDeleteId = null;
+        }
+    }
+
+    /* Create */
+    private void ShowCreateModal()
+    {
+        createError = null;
+        createModel = new() { Year = DateTime.Now.Year };
+        showCreateModal = true;
+    }
+
+    private void CancelCreate()
+    {
+        if (savingCreate) return;
+        showCreateModal = false;
+        createModel = new();
+        createError = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        bool success = false;
+        savingCreate = true;
+        createError = null;
+        try
+        {
+            var payload = new CreateSlingshotPayload 
+            { 
+                Year = createModel.Year,
+                Model = createModel.Model.Trim(), 
+                Color = createModel.Color.Trim() 
+            };
+            // Use relative URL
+            var response = await Http.PostAsJsonAsync("api/slingshots", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<SlinghotDto>();
+                if (created is not null)
+                {
+                    slingshots.Add(created);
+                    slingshots = slingshots
+                        .OrderBy(s => s.Year)
+                        .ThenBy(s => s.Model)
+                        .ToList();
+                }
+                success = true;
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                createError = $"Create failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            createError = $"Create error: {ex.Message}";
+        }
+        finally
+        {
+            savingCreate = false;
+            if (success) CancelCreate();
+        }
+    }
+
+    private void HandleCreateKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CancelCreate();
+    }
+
+    /* Records / Models */
+    private sealed record SlinghotDto(int Id, int Year, string Model, string Color);
+
+    private sealed record AccessoryInfoDto(
+        int Id,
+        string Title,
+        string CategoryName,
+        List<int>? SlinghotIds
+    );
+
+    private sealed class SlinghotEditModel
+    {
+        public int Id { get; set; }
+        public int Year { get; set; }
+        public string Model { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateSlinghotModel
+    {
+        public int Year { get; set; }
+        public string Model { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateSlingshotPayload
+    {
+        public int Year { get; set; }
+        public string Model { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+    }
+}
