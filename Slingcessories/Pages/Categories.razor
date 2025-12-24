@@ -10,10 +10,14 @@
     </NavLink>
 </div>
 
-<h1>Categories</h1>
+<h1>Categories & Subcategories</h1>
 
 <div class="mb-3 d-flex gap-2">
     <button class="btn btn-success btn-sm" @onclick="ShowCreateModal">+ New Category</button>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleExpandAll">
+        <span class="@(allExpanded ? "bi bi-chevron-up" : "bi bi-chevron-down") me-1"></span>
+        @(allExpanded ? "Collapse All" : "Expand All")
+    </button>
     <button class="btn btn-outline-primary btn-sm"
             @onclick="Reload"
             disabled="@saving || isLoading">Refresh</button>
@@ -39,13 +43,13 @@ else
             @foreach (var c in categories)
             {
                 <li class="list-group-item">
-                    @if (editingId == c.Id)
+                    @if (editingCategoryId == c.Id)
                     {
-                        <EditForm Model="editModel" OnValidSubmit="SaveEditAsync">
+                        <EditForm Model="editCategoryModel" OnValidSubmit="SaveCategoryEditAsync">
                             <DataAnnotationsValidator />
                             <div class="d-flex align-items-center gap-2">
                                 <InputText class="form-control form-control-sm w-auto"
-                                           @bind-Value="editModel.Name" />
+                                           @bind-Value="editCategoryModel.Name" />
                                 <button type="submit"
                                         class="btn btn-sm btn-primary"
                                         disabled="@saving">
@@ -53,29 +57,98 @@ else
                                 </button>
                                 <button type="button"
                                         class="btn btn-sm btn-secondary"
-                                        @onclick="CancelEdit"
+                                        @onclick="CancelCategoryEdit"
                                         disabled="@saving">Cancel</button>
                             </div>
-                            <ValidationMessage For="() => editModel.Name" />
+                            <ValidationMessage For="() => editCategoryModel.Name" />
                         </EditForm>
                     }
                     else
                     {
                         <div class="d-flex justify-content-between align-items-center">
-                            <span>@c.Name</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-link p-0 text-decoration-none" 
+                                        @onclick="() => ToggleCategory(c.Id)"
+                                        style="min-width: 24px;">
+                                    <span class="@(expandedCategories.Contains(c.Id) ? "bi bi-chevron-down" : "bi bi-chevron-right")"></span>
+                                </button>
+                                <strong>@c.Name</strong>
+                                <span class="badge bg-secondary">@GetSubcategoryCount(c.Id)</span>
+                            </div>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-secondary" @onclick="() => BeginEdit(c)">Edit</button>
-                                @if (confirmDeleteId == c.Id)
+                                <button class="btn btn-outline-success" @onclick="() => ShowAddSubcategoryModal(c.Id)">
+                                    <span class="bi bi-plus-circle me-1"></span>Add Subcategory
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="() => BeginCategoryEdit(c)">Edit</button>
+                                @if (confirmDeleteCategoryId == c.Id)
                                 {
-                                    <button class="btn btn-danger" disabled="@saving" @onclick="() => DeleteAsync(c.Id)">Confirm</button>
-                                    <button class="btn btn-outline-secondary" disabled="@saving" @onclick="() => confirmDeleteId = null">Cancel</button>
+                                    <button class="btn btn-danger" disabled="@saving" @onclick="() => DeleteCategoryAsync(c.Id)">Confirm</button>
+                                    <button class="btn btn-outline-secondary" disabled="@saving" @onclick="() => confirmDeleteCategoryId = null">Cancel</button>
                                 }
                                 else
                                 {
-                                    <button class="btn btn-outline-danger" disabled="@saving" @onclick="() => confirmDeleteId = c.Id">Delete</button>
+                                    <button class="btn btn-outline-danger" disabled="@saving" @onclick="() => confirmDeleteCategoryId = c.Id">Delete</button>
                                 }
                             </div>
                         </div>
+
+                        @* Subcategories for this category *@
+                        @if (expandedCategories.Contains(c.Id))
+                        {
+                            var categorySubcategories = subcategories.Where(s => s.CategoryId == c.Id).ToList();
+                            @if (categorySubcategories.Any())
+                            {
+                                <ul class="list-group mt-2 ms-4">
+                                    @foreach (var sc in categorySubcategories)
+                                    {
+                                        <li class="list-group-item list-group-item-light">
+                                            @if (editingSubcategoryId == sc.Id)
+                                            {
+                                                <EditForm Model="editSubcategoryModel" OnValidSubmit="SaveSubcategoryEditAsync">
+                                                    <DataAnnotationsValidator />
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <InputText class="form-control form-control-sm w-auto"
+                                                                   @bind-Value="editSubcategoryModel.Name" />
+                                                        <button type="submit"
+                                                                class="btn btn-sm btn-primary"
+                                                                disabled="@saving">
+                                                            @(saving ? "Saving..." : "Save")
+                                                        </button>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-secondary"
+                                                                @onclick="CancelSubcategoryEdit"
+                                                                disabled="@saving">Cancel</button>
+                                                    </div>
+                                                    <ValidationMessage For="() => editSubcategoryModel.Name" />
+                                                </EditForm>
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span>@sc.Name</span>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => BeginSubcategoryEdit(sc)">Edit</button>
+                                                        @if (confirmDeleteSubcategoryId == sc.Id)
+                                                        {
+                                                            <button class="btn btn-danger btn-sm" disabled="@saving" @onclick="() => DeleteSubcategoryAsync(sc.Id)">Confirm</button>
+                                                            <button class="btn btn-outline-secondary btn-sm" disabled="@saving" @onclick="() => confirmDeleteSubcategoryId = null">Cancel</button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <button class="btn btn-outline-danger btn-sm" disabled="@saving" @onclick="() => confirmDeleteSubcategoryId = sc.Id">Delete</button>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="text-muted ms-4 mt-2 mb-0 small">No subcategories yet. Click "Add Subcategory" to create one.</p>
+                            }
+                        }
                     }
                 </li>
             }
@@ -83,7 +156,8 @@ else
     }
 }
 
-@if (showCreateModal)
+@* Create Category Modal *@
+@if (showCreateCategoryModal)
 {
     <div class="modal-backdrop fade show"></div>
     <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
@@ -91,17 +165,17 @@ else
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">New Category</h5>
-                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelCreate"></button>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelCreateCategory"></button>
                 </div>
-                <EditForm Model="createModel" OnValidSubmit="CreateAsync">
+                <EditForm Model="createCategoryModel" OnValidSubmit="CreateCategoryAsync">
                     <DataAnnotationsValidator />
                     <div class="modal-body">
                         <div class="mb-2">
                             <label class="form-label">Name</label>
                             <InputText class="form-control form-control-sm"
-                                       @bind-Value="createModel.Name"
-                                       @onkeydown="HandleCreateKeyDown" />
-                            <ValidationMessage For="() => createModel.Name" />
+                                       @bind-Value="createCategoryModel.Name"
+                                       @onkeydown="HandleCreateCategoryKeyDown" />
+                            <ValidationMessage For="() => createCategoryModel.Name" />
                         </div>
                         @if (createError is not null)
                         {
@@ -116,7 +190,7 @@ else
                         </button>
                         <button type="button"
                                 class="btn btn-secondary btn-sm"
-                                @onclick="CancelCreate"
+                                @onclick="CancelCreateCategory"
                                 disabled="@savingCreate">Cancel</button>
                     </div>
                 </EditForm>
@@ -125,34 +199,107 @@ else
     </div>
 }
 
+@* Create Subcategory Modal *@
+@if (showCreateSubcategoryModal && selectedCategoryId.HasValue)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Subcategory</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelCreateSubcategory"></button>
+                </div>
+                <EditForm Model="createSubcategoryModel" OnValidSubmit="CreateSubcategoryAsync">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label class="form-label">Category</label>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="@GetCategoryName(selectedCategoryId.Value)" 
+                                   disabled />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Name</label>
+                            <InputText class="form-control form-control-sm"
+                                       @bind-Value="createSubcategoryModel.Name"
+                                       @onkeydown="HandleCreateSubcategoryKeyDown" />
+                            <ValidationMessage For="() => createSubcategoryModel.Name" />
+                        </div>
+                        @if (createSubcategoryError is not null)
+                        {
+                            <div class="alert alert-danger py-1 px-2 mb-2">@createSubcategoryError</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit"
+                                class="btn btn-primary btn-sm"
+                                disabled="@savingCreateSubcategory">
+                            @(savingCreateSubcategory ? "Saving..." : "OK")
+                        </button>
+                        <button type="button"
+                                class="btn btn-secondary btn-sm"
+                                @onclick="CancelCreateSubcategory"
+                                disabled="@savingCreateSubcategory">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
+    // Data
     private List<CategoryDto> categories = [];
+    private List<SubcategoryDto> subcategories = [];
+    private HashSet<int> expandedCategories = new();
+    private bool allExpanded = false;
+    
+    // State
     private bool isLoading = true;
     private string? errorMessage;
-
-    private int? editingId;
-    private CategoryEditModel? editModel;
     private bool saving;
-    private int? confirmDeleteId;
 
-    // Create modal state
-    private bool showCreateModal;
-    private CreateCategoryModel createModel = new();
+    // Category editing
+    private int? editingCategoryId;
+    private CategoryEditModel? editCategoryModel;
+    private int? confirmDeleteCategoryId;
+
+    // Subcategory editing
+    private int? editingSubcategoryId;
+    private SubcategoryEditModel? editSubcategoryModel;
+    private int? confirmDeleteSubcategoryId;
+
+    // Create category modal
+    private bool showCreateCategoryModal;
+    private CreateCategoryModel createCategoryModel = new();
     private bool savingCreate;
     private string? createError;
+
+    // Create subcategory modal
+    private bool showCreateSubcategoryModal;
+    private int? selectedCategoryId;
+    private CreateSubcategoryModel createSubcategoryModel = new();
+    private bool savingCreateSubcategory;
+    private string? createSubcategoryError;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
+        isLoading = true;
+        errorMessage = null;
         try
         {
-            var result = await Http.GetFromJsonAsync<List<CategoryDto>>("api/Categories");
-            categories = result ?? [];
+            var catResult = await Http.GetFromJsonAsync<List<CategoryDto>>("api/Categories");
+            categories = catResult ?? [];
+
+            var subResult = await Http.GetFromJsonAsync<List<SubcategoryDto>>("api/Subcategories");
+            subcategories = subResult ?? [];
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load categories: {ex.Message}";
+            errorMessage = $"Failed to load data: {ex.Message}";
         }
         finally
         {
@@ -162,45 +309,86 @@ else
 
     private async Task Reload()
     {
-        if (saving || savingCreate) return;
-        isLoading = true;
-        errorMessage = null;
+        if (saving || savingCreate || savingCreateSubcategory) return;
         categories.Clear();
+        subcategories.Clear();
         await LoadAsync();
     }
 
-    /* Edit */
-    private void BeginEdit(CategoryDto c)
+    private void ToggleExpandAll()
     {
-        if (saving || savingCreate) return;
-        editingId = c.Id;
-        editModel = new CategoryEditModel { Id = c.Id, Name = c.Name };
-        confirmDeleteId = null;
+        if (allExpanded)
+        {
+            // Collapse all
+            expandedCategories.Clear();
+            allExpanded = false;
+        }
+        else
+        {
+            // Expand all
+            expandedCategories.Clear();
+            foreach (var category in categories)
+            {
+                expandedCategories.Add(category.Id);
+            }
+            allExpanded = true;
+        }
     }
 
-    private void CancelEdit()
+    /* Helpers */
+    private void ToggleCategory(int categoryId)
+    {
+        if (expandedCategories.Contains(categoryId))
+            expandedCategories.Remove(categoryId);
+        else
+            expandedCategories.Add(categoryId);
+        
+        UpdateAllExpandedState();
+    }
+
+    private void UpdateAllExpandedState()
+    {
+        allExpanded = categories.Count > 0 && expandedCategories.Count == categories.Count;
+    }
+
+    private int GetSubcategoryCount(int categoryId) 
+        => subcategories.Count(s => s.CategoryId == categoryId);
+
+    private string GetCategoryName(int categoryId)
+        => categories.FirstOrDefault(c => c.Id == categoryId)?.Name ?? "Unknown";
+
+    /* Category Edit */
+    private void BeginCategoryEdit(CategoryDto c)
+    {
+        if (saving || savingCreate || savingCreateSubcategory) return;
+        editingCategoryId = c.Id;
+        editCategoryModel = new CategoryEditModel { Id = c.Id, Name = c.Name };
+        confirmDeleteCategoryId = null;
+    }
+
+    private void CancelCategoryEdit()
     {
         if (saving) return;
-        editingId = null;
-        editModel = null;
+        editingCategoryId = null;
+        editCategoryModel = null;
     }
 
-    private async Task SaveEditAsync()
+    private async Task SaveCategoryEditAsync()
     {
-        if (editModel is null || editingId != editModel.Id) return;
+        if (editCategoryModel is null || editingCategoryId != editCategoryModel.Id) return;
         saving = true;
         errorMessage = null;
 
         try
         {
-            var dto = new CategoryDto(editModel.Id, editModel.Name.Trim());
+            var dto = new CategoryDto(editCategoryModel.Id, editCategoryModel.Name.Trim());
             var response = await Http.PutAsJsonAsync($"api/Categories/{dto.Id}", dto);
 
             if (response.IsSuccessStatusCode)
             {
                 var index = categories.FindIndex(c => c.Id == dto.Id);
                 if (index >= 0) categories[index] = dto;
-                CancelEdit();
+                CancelCategoryEdit();
             }
             else
             {
@@ -218,8 +406,8 @@ else
         }
     }
 
-    /* Delete */
-    private async Task DeleteAsync(int id)
+    /* Category Delete */
+    private async Task DeleteCategoryAsync(int id)
     {
         saving = true;
         errorMessage = null;
@@ -229,7 +417,9 @@ else
             if (response.IsSuccessStatusCode)
             {
                 categories.RemoveAll(c => c.Id == id);
-                if (editingId == id) CancelEdit();
+                subcategories.RemoveAll(s => s.CategoryId == id);
+                expandedCategories.Remove(id);
+                if (editingCategoryId == id) CancelCategoryEdit();
             }
             else
             {
@@ -244,34 +434,34 @@ else
         finally
         {
             saving = false;
-            confirmDeleteId = null;
+            confirmDeleteCategoryId = null;
         }
     }
 
-    /* Create */
+    /* Category Create */
     private void ShowCreateModal()
     {
         createError = null;
-        createModel = new();
-        showCreateModal = true;
+        createCategoryModel = new();
+        showCreateCategoryModal = true;
     }
 
-    private void CancelCreate()
+    private void CancelCreateCategory()
     {
         if (savingCreate) return;
-        showCreateModal = false;
-        createModel = new();
+        showCreateCategoryModal = false;
+        createCategoryModel = new();
         createError = null;
     }
 
-    private async Task CreateAsync()
+    private async Task CreateCategoryAsync()
     {
         bool success = false;
         savingCreate = true;
         createError = null;
         try
         {
-            var trimmed = createModel.Name.Trim();
+            var trimmed = createCategoryModel.Name.Trim();
             var payload = new CreateCategoryPayload { Name = trimmed };
             var response = await Http.PostAsJsonAsync("api/Categories", payload);
 
@@ -281,9 +471,7 @@ else
                 if (created is not null)
                 {
                     categories.Add(created);
-                    categories = categories
-                        .OrderBy(c => c.Name)
-                        .ToList();
+                    categories = categories.OrderBy(c => c.Name).ToList();
                 }
                 success = true;
             }
@@ -300,23 +488,165 @@ else
         finally
         {
             savingCreate = false;
-            if (success)
-            {
-                CancelCreate();
-            }
+            if (success) CancelCreateCategory();
         }
     }
 
-    private void HandleCreateKeyDown(KeyboardEventArgs e)
+    private void HandleCreateCategoryKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape")
+        if (e.Key == "Escape") CancelCreateCategory();
+    }
+
+    /* Subcategory Edit */
+    private void BeginSubcategoryEdit(SubcategoryDto sc)
+    {
+        if (saving || savingCreate || savingCreateSubcategory) return;
+        editingSubcategoryId = sc.Id;
+        editSubcategoryModel = new SubcategoryEditModel { Id = sc.Id, Name = sc.Name, CategoryId = sc.CategoryId };
+        confirmDeleteSubcategoryId = null;
+    }
+
+    private void CancelSubcategoryEdit()
+    {
+        if (saving) return;
+        editingSubcategoryId = null;
+        editSubcategoryModel = null;
+    }
+
+    private async Task SaveSubcategoryEditAsync()
+    {
+        if (editSubcategoryModel is null || editingSubcategoryId != editSubcategoryModel.Id) return;
+        saving = true;
+        errorMessage = null;
+
+        try
         {
-            CancelCreate();
+            var dto = new SubcategoryDto(editSubcategoryModel.Id, editSubcategoryModel.Name.Trim(), editSubcategoryModel.CategoryId);
+            var response = await Http.PutAsJsonAsync($"api/Subcategories/{dto.Id}", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var index = subcategories.FindIndex(s => s.Id == dto.Id);
+                if (index >= 0) subcategories[index] = dto;
+                CancelSubcategoryEdit();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Update failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
         }
+        catch (Exception ex)
+        {
+            errorMessage = $"Update error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    /* Subcategory Delete */
+    private async Task DeleteSubcategoryAsync(int id)
+    {
+        saving = true;
+        errorMessage = null;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/Subcategories/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                subcategories.RemoveAll(s => s.Id == id);
+                if (editingSubcategoryId == id) CancelSubcategoryEdit();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Delete failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Delete error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+            confirmDeleteSubcategoryId = null;
+        }
+    }
+
+    /* Subcategory Create */
+    private void ShowAddSubcategoryModal(int categoryId)
+    {
+        if (saving || savingCreate) return;
+        selectedCategoryId = categoryId;
+        createSubcategoryError = null;
+        createSubcategoryModel = new();
+        showCreateSubcategoryModal = true;
+        
+        // Expand the category to show the new subcategory after creation
+        if (!expandedCategories.Contains(categoryId))
+            expandedCategories.Add(categoryId);
+    }
+
+    private void CancelCreateSubcategory()
+    {
+        if (savingCreateSubcategory) return;
+        showCreateSubcategoryModal = false;
+        selectedCategoryId = null;
+        createSubcategoryModel = new();
+        createSubcategoryError = null;
+    }
+
+    private async Task CreateSubcategoryAsync()
+    {
+        if (!selectedCategoryId.HasValue) return;
+        
+        bool success = false;
+        savingCreateSubcategory = true;
+        createSubcategoryError = null;
+        try
+        {
+            var trimmed = createSubcategoryModel.Name.Trim();
+            var payload = new CreateSubcategoryPayload { Name = trimmed, CategoryId = selectedCategoryId.Value };
+            var response = await Http.PostAsJsonAsync("api/Subcategories", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<SubcategoryDto>();
+                if (created is not null)
+                {
+                    subcategories.Add(created);
+                    subcategories = subcategories.OrderBy(s => s.Name).ToList();
+                }
+                success = true;
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                createSubcategoryError = $"Create failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            createSubcategoryError = $"Create error: {ex.Message}";
+        }
+        finally
+        {
+            savingCreateSubcategory = false;
+            if (success) CancelCreateSubcategory();
+        }
+    }
+
+    private void HandleCreateSubcategoryKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CancelCreateSubcategory();
     }
 
     /* Records / Models */
     private sealed record CategoryDto(int Id, string Name);
+    private sealed record SubcategoryDto(int Id, string Name, int CategoryId);
 
     private sealed class CategoryEditModel
     {
@@ -327,7 +657,25 @@ else
         public string Name { get; set; } = string.Empty;
     }
 
+    private sealed class SubcategoryEditModel
+    {
+        public int Id { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        public int CategoryId { get; set; }
+    }
+
     private sealed class CreateCategoryModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateSubcategoryModel
     {
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.StringLength(100)]
@@ -337,5 +685,11 @@ else
     private sealed class CreateCategoryPayload
     {
         public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateSubcategoryPayload
+    {
+        public string Name { get; set; } = string.Empty;
+        public int CategoryId { get; set; }
     }
 }
