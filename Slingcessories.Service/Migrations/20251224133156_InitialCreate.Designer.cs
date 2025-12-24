@@ -11,8 +11,8 @@ using Slingcessories.Service.Data;
 namespace Slingcessories.Service.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251224022009_AddSlingshotsTable")]
-    partial class AddSlingshotsTable
+    [Migration("20251224133156_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,9 +41,6 @@ namespace Slingcessories.Service.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int?>("SlingId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("SubcategoryId")
                         .HasColumnType("int");
 
@@ -64,11 +61,24 @@ namespace Slingcessories.Service.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("SlingId");
-
                     b.HasIndex("SubcategoryId");
 
                     b.ToTable("Accessories");
+                });
+
+            modelBuilder.Entity("Slingcessories.Service.Models.AccessorySlingshot", b =>
+                {
+                    b.Property<int>("AccessoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SlingshotId")
+                        .HasColumnType("int");
+
+                    b.HasKey("AccessoryId", "SlingshotId");
+
+                    b.HasIndex("SlingshotId");
+
+                    b.ToTable("AccessorySlingshots");
                 });
 
             modelBuilder.Entity("Slingcessories.Service.Models.Category", b =>
@@ -149,11 +159,6 @@ namespace Slingcessories.Service.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Slingcessories.Service.Models.Slingshot", "Slingshot")
-                        .WithMany("Accessories")
-                        .HasForeignKey("SlingId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Slingcessories.Service.Models.Subcategory", "Subcategory")
                         .WithMany("Accessories")
                         .HasForeignKey("SubcategoryId")
@@ -161,9 +166,26 @@ namespace Slingcessories.Service.Migrations
 
                     b.Navigation("Category");
 
-                    b.Navigation("Slingshot");
-
                     b.Navigation("Subcategory");
+                });
+
+            modelBuilder.Entity("Slingcessories.Service.Models.AccessorySlingshot", b =>
+                {
+                    b.HasOne("Slingcessories.Service.Models.Accessory", "Accessory")
+                        .WithMany("AccessorySlingshots")
+                        .HasForeignKey("AccessoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Slingcessories.Service.Models.Slingshot", "Slingshot")
+                        .WithMany("AccessorySlingshots")
+                        .HasForeignKey("SlingshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Accessory");
+
+                    b.Navigation("Slingshot");
                 });
 
             modelBuilder.Entity("Slingcessories.Service.Models.Subcategory", b =>
@@ -177,6 +199,11 @@ namespace Slingcessories.Service.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("Slingcessories.Service.Models.Accessory", b =>
+                {
+                    b.Navigation("AccessorySlingshots");
+                });
+
             modelBuilder.Entity("Slingcessories.Service.Models.Category", b =>
                 {
                     b.Navigation("Subcategories");
@@ -184,7 +211,7 @@ namespace Slingcessories.Service.Migrations
 
             modelBuilder.Entity("Slingcessories.Service.Models.Slingshot", b =>
                 {
-                    b.Navigation("Accessories");
+                    b.Navigation("AccessorySlingshots");
                 });
 
             modelBuilder.Entity("Slingcessories.Service.Models.Subcategory", b =>
