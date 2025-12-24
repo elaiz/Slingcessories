@@ -2,10 +2,10 @@ namespace Slingcessories.Service.Dtos;
 
 public record CreateAccessoryDto(
     string Title,
-    string PictureUrl,
+    string? PictureUrl,
     int Units,
     decimal Price,
-    string Url,
+    string? Url,
     bool Wishlist,
     int CategoryId,
     int? SubcategoryId,

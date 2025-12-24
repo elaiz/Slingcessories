@@ -6,10 +6,20 @@
 <PageTitle>@(Wishlist ? "Wishlist" : "Accessories")</PageTitle>
 <h1>@(Wishlist ? "Wishlist" : "Accessories")</h1>
 
-<div class="mb-3">
-    <button class="btn btn-success btn-sm" >
+<div class="mb-3 d-flex gap-2">
+    <button class="btn btn-success btn-sm" @onclick="ShowCreateModal">
         <span class="bi bi-plus-circle me-1"></span>Add Accessory
     </button>
+    <div class="btn-group btn-group-sm ms-auto">
+        <button class="btn @(viewMode == ViewMode.Cards ? "btn-primary" : "btn-outline-primary")" 
+                @onclick="() => SetViewMode(ViewMode.Cards)">
+            <span class="bi bi-grid-3x3-gap me-1"></span>Cards
+        </button>
+        <button class="btn @(viewMode == ViewMode.Grid ? "btn-primary" : "btn-outline-primary")" 
+                @onclick="() => SetViewMode(ViewMode.Grid)">
+            <span class="bi bi-list-ul me-1"></span>Grid
+        </button>
+    </div>
 </div>
 
 <div class="container my-4">
@@ -28,49 +38,260 @@
     }
     else
     {
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
-            @foreach (var item in FilteredItems)
-            {
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <img class="card-img-top" src="@item.PictureUrl" alt="@item.Title" />
-                        <div class="card-body">
-                            <h5 class="card-title">@item.Title</h5>
-                            <p class="card-text text-muted mb-1">
-                                <strong>Category:</strong> @item.Category
-                            </p>
-                            @if (!string.IsNullOrWhiteSpace(item.Subcategory))
-                            {
+        @if (viewMode == ViewMode.Cards)
+        {
+            @* Card View *@
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+                @foreach (var item in FilteredItems)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <img class="card-img-top" src="@item.PictureUrl" alt="@item.Title" />
+                            <div class="card-body">
+                                <h5 class="card-title">@item.Title</h5>
                                 <p class="card-text text-muted mb-1">
-                                    <strong>Subcategory:</strong> @item.Subcategory
+                                    <strong>Category:</strong> @item.Category
                                 </p>
-                            }
-                            @if (item.SlinghotDescriptions != null && item.SlinghotDescriptions.Any())
-                            {
-                                <p class="card-text text-muted mb-1">
-                                    <strong>Slingshots:</strong> @string.Join(", ", item.SlinghotDescriptions)
-                                </p>
-                            }
-                            <p class="card-text mb-1"><strong>Units:</strong> @item.Units</p>
-                            <p class="card-text mb-2"><strong>Price:</strong> @item.Price.ToString("C")</p>
+                                @if (!string.IsNullOrWhiteSpace(item.Subcategory))
+                                {
+                                    <p class="card-text text-muted mb-1">
+                                        <strong>Subcategory:</strong> @item.Subcategory
+                                    </p>
+                                }
+                                @if (item.SlinghotDescriptions != null && item.SlinghotDescriptions.Any())
+                                {
+                                    <p class="card-text text-muted mb-1">
+                                        <strong>Slingshots:</strong> @string.Join(", ", item.SlinghotDescriptions)
+                                    </p>
+                                }
+                                <p class="card-text mb-1"><strong>Units:</strong> @item.Units</p>
+                                <p class="card-text mb-2"><strong>Price:</strong> @item.Price.ToString("C")</p>
+                            </div>
+                            <div class="card-footer bg-transparent border-0 d-flex justify-content-end">
+                                @if (!string.IsNullOrWhiteSpace(item.Url))
+                                {
+                                    <a href="@item.Url" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary me-2">
+                                        <span class="bi bi-box-arrow-up-right me-1"></span>Open Link
+                                    </a>
+                                }
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" @onclick="() => OpenEditAsync(item)" disabled="@isDeleting">
+                                        <span class="bi bi-pencil-square me-1"></span>Edit
+                                    </button>
+                                    @if (confirmDeleteId == item.Id)
+                                    {
+                                        <button class="btn btn-danger" disabled="@isDeleting" @onclick="() => DeleteAccessoryAsync(item.Id)">
+                                            @if (isDeleting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            }
+                                            else
+                                            {
+                                                <text>Confirm</text>
+                                            }
+                                        </button>
+                                        <button class="btn btn-outline-secondary" disabled="@isDeleting" @onclick="() => confirmDeleteId = null">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-danger" disabled="@isDeleting" @onclick="() => confirmDeleteId = item.Id">
+                                            <span class="bi bi-trash me-1"></span>Delete
+                                        </button>
+                                    }
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-footer bg-transparent border-0 d-flex justify-content-end">
-                            @if (!string.IsNullOrWhiteSpace(item.Url))
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            @* Hierarchy Grid View *@
+            <ul class="list-group mb-3">
+                @foreach (var item in FilteredItems)
+                {
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                @if (item.SlinghotDescriptions != null && item.SlinghotDescriptions.Any())
+                                {
+                                    <button class="btn btn-sm btn-link p-0 text-decoration-none" 
+                                            @onclick="() => ToggleAccessoryExpansion(item.Id)"
+                                            style="min-width: 24px;">
+                                        <span class="@(expandedAccessories.Contains(item.Id) ? "bi bi-chevron-down" : "bi bi-chevron-right")"></span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span style="min-width: 24px;"></span>
+                                }
+                                <div>
+                                    <strong>@item.Title</strong>
+                                    <span class="text-muted ms-2">(@item.Category@(!string.IsNullOrWhiteSpace(item.Subcategory) ? " - " + item.Subcategory : ""))</span>
+                                    <div class="text-muted small">
+                                        Units: @item.Units | Price: @item.Price.ToString("C")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                @if (!string.IsNullOrWhiteSpace(item.Url))
+                                {
+                                    <a href="@item.Url" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary">
+                                        <span class="bi bi-box-arrow-up-right me-1"></span>Link
+                                    </a>
+                                }
+                                <button class="btn btn-outline-primary" @onclick="() => OpenEditAsync(item)">Edit</button>
+                                @if (confirmDeleteId == item.Id)
+                                {
+                                    <button class="btn btn-danger" disabled="@isDeleting" @onclick="() => DeleteAccessoryAsync(item.Id)">Confirm</button>
+                                    <button class="btn btn-outline-secondary" disabled="@isDeleting" @onclick="() => confirmDeleteId = null">Cancel</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-outline-danger" disabled="@isDeleting" @onclick="() => confirmDeleteId = item.Id">Delete</button>
+                                }
+                            </div>
+                        </div>
+
+                        @* Show slingshots for this accessory *@
+                        @if (expandedAccessories.Contains(item.Id) && item.SlinghotDescriptions != null && item.SlinghotDescriptions.Any())
+                        {
+                            <div class="mt-2 ms-4">
+                                <h6 class="text-muted">Associated Slingshots:</h6>
+                                <ul class="list-unstyled">
+                                    @foreach (var slingshot in item.SlinghotDescriptions)
+                                    {
+                                        <li class="mb-1">
+                                            <span class="bi bi-diagram-3 me-1"></span>@slingshot
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+@* Create Modal *@
+@if (showCreateModal)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Accessory</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelCreate"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(createError))
+                    {
+                        <div class="alert alert-danger" role="alert">@createError</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Title <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="createModel.Title" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Picture URL</label>
+                        <input class="form-control" @bind="createModel.PictureUrl" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Product URL</label>
+                        <input class="form-control" @bind="createModel.Url" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Units</label>
+                            <input type="number" class="form-control" @bind="createModel.Units" min="0" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Price</label>
+                            <input type="number" class="form-control" @bind="createModel.Price" step="0.01" min="0" />
+                        </div>
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="createWishlistCheck" @bind="createModel.Wishlist" />
+                                <label class="form-check-label" for="createWishlistCheck">
+                                    Wishlist
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category <span class="text-danger">*</span></label>
+                            <select class="form-select" value="@createModel.CategoryId" @onchange="@(async e => { createModel.CategoryId = int.Parse(e.Value?.ToString() ?? "0"); await OnCreateCategoryChanged(); })">
+                                <option value="0">Select a category</option>
+                                @foreach (var c in categories)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Subcategory</label>
+                            <select class="form-select" @bind="createModel.SubcategoryId" disabled="@(createModel.CategoryId <= 0)">
+                                <option value="">None</option>
+                                @foreach (var sc in createSubcategories)
+                                {
+                                    <option value="@sc.Id">@sc.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Slingshots</label>
+                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                            @if (slingshots.Any())
                             {
-                                <a href="@item.Url" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary me-2">
-                                    <span class="bi bi-box-arrow-up-right me-1"></span>Open Link
-                                </a>
+                                @foreach (var sl in slingshots)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="create_sling_@sl.Id" 
+                                               checked="@(createModel.SlinghotIds != null && createModel.SlinghotIds.Contains(sl.Id))"
+                                               @onchange="@(e => ToggleCreateSlingshot(sl.Id, (bool)e.Value!))" />
+                                        <label class="form-check-label" for="create_sling_@sl.Id">
+                                            @sl.Year @sl.Model (@sl.Color)
+                                        </label>
+                                    </div>
+                                }
                             }
-                            <button class="btn btn-sm btn-outline-primary" @onclick="() => OpenEditAsync(item)">
-                                <span class="bi bi-pencil-square me-1"></span>Edit
-                            </button>
+                            else
+                            {
+                                <p class="text-muted mb-0 small">No slingshots available</p>
+                            }
                         </div>
                     </div>
                 </div>
-            }
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelCreate" disabled="@isCreating">Cancel</button>
+                    <button class="btn btn-primary"
+                            @onclick="CreateAccessoryAsync"
+                            disabled="@(isCreating || string.IsNullOrWhiteSpace(createModel.Title) || createModel.CategoryId <= 0)">
+                        @if (isCreating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Create
+                    </button>
+                </div>
+            </div>
         </div>
-    }
-</div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
 
 @* Edit Modal *@
 @if (showEditModal && editingItem is not null)
@@ -200,9 +421,13 @@
 }
 
 @code {
+    private enum ViewMode { Cards, Grid }
+    
     private List<Accessory> Items { get; set; } = new();
     private bool isLoading = true;
     private string? error;
+    private ViewMode viewMode = ViewMode.Cards;
+    private HashSet<int> expandedAccessories = new();
 
     private List<Accessory> FilteredItems => Items.Where(a => a.Wishlist == Wishlist).ToList();
 
@@ -214,6 +439,17 @@
     private bool isSaving;
     private string? modalError;
     private Accessory? editingItem;
+
+    // Create modal state
+    private bool showCreateModal;
+    private bool isCreating;
+    private string? createError;
+    private AccessoryCreateDto createModel = new();
+    private List<SubcategoryOption> createSubcategories = new();
+
+    // Delete state
+    private int? confirmDeleteId;
+    private bool isDeleting;
 
     // Lookup data
     private List<CategoryOption> categories = new();
@@ -259,6 +495,188 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    /* Delete Accessory */
+    private async Task DeleteAccessoryAsync(int id)
+    {
+        isDeleting = true;
+        error = null;
+        
+        try
+        {
+            var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
+            if (!online)
+            {
+                error = "You're offline. Connect to the internet to delete accessories.";
+                return;
+            }
+
+            var response = await Http.DeleteAsync($"api/accessories/{id}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                // Remove from local list
+                Items.RemoveAll(a => a.Id == id);
+                
+                // Update offline cache
+                var cacheKey = $"accessories_{Wishlist}";
+                await JS.InvokeVoidAsync("indexedDbHelper.set", cacheKey, Items);
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                error = $"Delete failed ({(int)response.StatusCode} {response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Delete error: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+            confirmDeleteId = null;
+        }
+    }
+
+    /* Create Accessory */
+    private async Task ShowCreateModal()
+    {
+        createError = null;
+        createModel = new AccessoryCreateDto { Wishlist = Wishlist }; // Default to current view's wishlist state
+        createSubcategories.Clear();
+        showCreateModal = true;
+
+        try
+        {
+            var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
+            if (!online)
+            {
+                createError = "You're offline. Connect to the internet to add accessories.";
+                return;
+            }
+
+            await LoadCategoriesAsync();
+            await LoadSlingshotsAsync();
+        }
+        catch (Exception ex)
+        {
+            createError = $"Failed to load form data: {ex.Message}";
+        }
+    }
+
+    private void CancelCreate()
+    {
+        if (isCreating) return;
+        showCreateModal = false;
+        createModel = new();
+        createSubcategories.Clear();
+        createError = null;
+    }
+
+    private async Task CreateAccessoryAsync()
+    {
+        createError = null;
+
+        try
+        {
+            isCreating = true;
+
+            var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
+            if (!online)
+            {
+                createError = "You're offline. Connect to the internet to create accessories.";
+                return;
+            }
+
+            // Map to CreateAccessoryDto expected by API
+            var payload = new CreateAccessoryPayload
+            {
+                Title = createModel.Title.Trim(),
+                PictureUrl = string.IsNullOrWhiteSpace(createModel.PictureUrl) ? null : createModel.PictureUrl.Trim(),
+                Url = string.IsNullOrWhiteSpace(createModel.Url) ? null : createModel.Url.Trim(),
+                Units = createModel.Units,
+                Price = createModel.Price,
+                Wishlist = createModel.Wishlist,
+                CategoryId = createModel.CategoryId,
+                SubcategoryId = createModel.SubcategoryId,
+                SlinghotIds = createModel.SlinghotIds ?? new List<int>()
+            };
+
+            var response = await Http.PostAsJsonAsync("api/accessories", payload);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var details = await response.Content.ReadAsStringAsync();
+                createError = $"Failed to create accessory: {response.ReasonPhrase}. {details}";
+                return;
+            }
+
+            // Get the created accessory from response
+            var created = await response.Content.ReadFromJsonAsync<Accessory>();
+            if (created is not null)
+            {
+                Items.Add(created);
+                
+                // Update offline cache
+                var cacheKey = $"accessories_{Wishlist}";
+                await JS.InvokeVoidAsync("indexedDbHelper.set", cacheKey, Items);
+            }
+
+            // Close modal
+            showCreateModal = false;
+            createModel = new();
+            createSubcategories.Clear();
+        }
+        catch (Exception ex)
+        {
+            createError = $"Unexpected error creating accessory: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private async Task OnCreateCategoryChanged()
+    {
+        // When category changes in create modal, reload subcategories and reset selection
+        if (createModel.CategoryId > 0)
+        {
+            await LoadCreateSubcategoriesAsync(createModel.CategoryId);
+        }
+        else
+        {
+            createSubcategories.Clear();
+        }
+        createModel.SubcategoryId = null;
+    }
+
+    private async Task LoadCreateSubcategoriesAsync(int categoryId)
+    {
+        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>($"api/categories/{categoryId}/subcategories");
+        createSubcategories = data ?? new();
+    }
+
+    private void ToggleCreateSlingshot(int slinghotId, bool isChecked)
+    {
+        if (createModel.SlinghotIds == null)
+        {
+            createModel.SlinghotIds = new List<int>();
+        }
+
+        if (isChecked)
+        {
+            if (!createModel.SlinghotIds.Contains(slinghotId))
+            {
+                createModel.SlinghotIds.Add(slinghotId);
+            }
+        }
+        else
+        {
+            createModel.SlinghotIds.Remove(slinghotId);
         }
     }
 
@@ -382,6 +800,12 @@
             editingItem.Category = catName ?? editingItem.Category;
             editingItem.Subcategory = subcatName;
 
+            // Update slingshot descriptions
+            if (editModel.SlinghotDescriptions != null)
+            {
+                editingItem.SlinghotDescriptions = editModel.SlinghotDescriptions;
+            }
+
             // Refresh offline cache for current view
             var cacheKey = $"accessories_{Wishlist}";
             await JS.InvokeVoidAsync("indexedDbHelper.set", cacheKey, Items);
@@ -392,7 +816,7 @@
         }
         catch (Exception ex)
         {
-            modalError = $"Unexpected error updating accessory: ${ex.Message}";
+            modalError = $"Unexpected error updating accessory: {ex.Message}";
         }
         finally
         {
@@ -500,5 +924,46 @@
         
         [System.Text.Json.Serialization.JsonPropertyName("slinghotDescriptions")]
         public List<string>? SlinghotDescriptions { get; set; }
+    }
+
+    // DTO for creating new accessories
+    private sealed class AccessoryCreateDto
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? PictureUrl { get; set; }
+        public int Units { get; set; }
+        public decimal Price { get; set; }
+        public string? Url { get; set; }
+        public bool Wishlist { get; set; }
+        public int CategoryId { get; set; }
+        public int? SubcategoryId { get; set; }
+        public List<int>? SlinghotIds { get; set; }
+    }
+
+    // Payload sent to server (matches CreateAccessoryDto on backend)
+    private sealed class CreateAccessoryPayload
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? PictureUrl { get; set; }
+        public int Units { get; set; }
+        public decimal Price { get; set; }
+        public string? Url { get; set; }
+        public bool Wishlist { get; set; }
+        public int CategoryId { get; set; }
+        public int? SubcategoryId { get; set; }
+        public List<int> SlinghotIds { get; set; } = new();
+    }
+
+    private void SetViewMode(ViewMode mode)
+    {
+        viewMode = mode;
+    }
+
+    private void ToggleAccessoryExpansion(int accessoryId)
+    {
+        if (expandedAccessories.Contains(accessoryId))
+            expandedAccessories.Remove(accessoryId);
+        else
+            expandedAccessories.Add(accessoryId);
     }
 }
