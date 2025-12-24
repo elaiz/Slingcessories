@@ -8,6 +8,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Subcategory> Subcategories => Set<Subcategory>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
+    public DbSet<Slingshot> Slingshots => Set<Slingshot>();
+    public DbSet<AccessorySlingshot> AccessorySlingshots => Set<AccessorySlingshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,5 +40,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(sc => sc.Accessories)
             .HasForeignKey(a => a.SubcategoryId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Configure many-to-many relationship between Accessory and Slingshot
+        modelBuilder.Entity<AccessorySlingshot>()
+            .HasKey(a_s => new { a_s.AccessoryId, a_s.SlingshotId });
+
+        modelBuilder.Entity<AccessorySlingshot>()
+            .HasOne(a_s => a_s.Accessory)
+            .WithMany(a => a.AccessorySlingshots)
+            .HasForeignKey(a_s => a_s.AccessoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AccessorySlingshot>()
+            .HasOne(a_s => a_s.Slingshot)
+            .WithMany(s => s.AccessorySlingshots)
+            .HasForeignKey(a_s => a_s.SlingshotId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Slingshot>()
+            .HasIndex(s => new { s.Year, s.Model, s.Color })
+            .IsUnique();
     }
 }

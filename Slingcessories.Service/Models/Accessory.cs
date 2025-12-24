@@ -15,4 +15,7 @@ public class Accessory
 
     public int? SubcategoryId { get; set; }
     public Subcategory? Subcategory { get; set; }
+
+    // Many-to-many relationship with Slingshots
+    public ICollection<AccessorySlingshot> AccessorySlingshots { get; set; } = new List<AccessorySlingshot>();
 }

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Slingcessories.Service.Data;
 
@@ -10,9 +11,11 @@ using Slingcessories.Service.Data;
 namespace Slingcessories.Service.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251224023456_AccessorySlingshotManyToMany")]
+    partial class AccessorySlingshotManyToMany
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -68,12 +71,12 @@ namespace Slingcessories.Service.Migrations
                     b.Property<int>("AccessoryId")
                         .HasColumnType("int");
 
-                    b.Property<int>("SlingshotId")
+                    b.Property<int>("SlinghotId")
                         .HasColumnType("int");
 
-                    b.HasKey("AccessoryId", "SlingshotId");
+                    b.HasKey("AccessoryId", "SlinghotId");
 
-                    b.HasIndex("SlingshotId");
+                    b.HasIndex("SlinghotId");
 
                     b.ToTable("AccessorySlingshots");
                 });
@@ -176,7 +179,7 @@ namespace Slingcessories.Service.Migrations
 
                     b.HasOne("Slingcessories.Service.Models.Slingshot", "Slingshot")
                         .WithMany("AccessorySlingshots")
-                        .HasForeignKey("SlingshotId")
+                        .HasForeignKey("SlinghotId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

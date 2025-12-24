@@ -11,5 +11,7 @@ public record AccessoryDto(
     int CategoryId,
     int? SubcategoryId,
     string CategoryName,
-    string? SubcategoryName
+    string? SubcategoryName,
+    List<int> SlinghotIds,
+    List<string> SlinghotDescriptions
 );
