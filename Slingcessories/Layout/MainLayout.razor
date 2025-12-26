@@ -1,17 +1,27 @@
 ﻿@inherits LayoutComponentBase
+@using Slingcessories.Components
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
-        <div class="top-row px-4 d-flex justify-content-end">
-            <NavLink href="/settings"
-                     class="btn btn-link p-0 text-decoration-none"
-                     title="Settings"
-                     aria-label="Settings">
-                Settings
-            </NavLink>
+        <div class="top-row px-4 d-flex justify-content-between align-items-center flex-wrap">
+            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                <UserSelector />
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <NavLink href="/register" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-person-plus"></i> Register
+                </NavLink>
+                <NavLink href="/settings"
+                         class="btn btn-link p-0 text-decoration-none"
+                         title="Settings"
+                         aria-label="Settings">
+                    Settings
+                </NavLink>
+            </div>
         </div>
 
         <article class="content px-4">

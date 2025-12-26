@@ -11,9 +11,15 @@ namespace Slingcessories.Service.Controllers;
 public class AccessoriesController(AppDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<AccessoryDto>>> GetAll([FromQuery] bool? wishlist)
+    public async Task<ActionResult<IEnumerable<AccessoryDto>>> GetAll([FromQuery] bool? wishlist, [FromQuery] string? userId)
     {
         var query = db.Accessories.AsQueryable();
+        
+        if (!string.IsNullOrEmpty(userId))
+        {
+            query = query.Where(a => a.UserId == userId);
+        }
+        
         if (wishlist is not null)
         {
             query = query.Where(a => a.Wishlist == wishlist);
@@ -85,7 +91,8 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             Url = dto.Url,
             Wishlist = dto.Wishlist,
             CategoryId = dto.CategoryId,
-            SubcategoryId = dto.SubcategoryId
+            SubcategoryId = dto.SubcategoryId,
+            UserId = dto.UserId
         };
         
         db.Accessories.Add(entity);

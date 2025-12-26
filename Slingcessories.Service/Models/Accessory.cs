@@ -16,6 +16,9 @@ public class Accessory
     public int? SubcategoryId { get; set; }
     public Subcategory? Subcategory { get; set; }
 
+    public string UserId { get; set; } = string.Empty;
+    public User? User { get; set; }
+
     // Many-to-many relationship with Slingshots
     public ICollection<AccessorySlingshot> AccessorySlingshots { get; set; } = new List<AccessorySlingshot>();
 }

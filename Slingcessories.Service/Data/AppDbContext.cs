@@ -5,6 +5,7 @@ namespace Slingcessories.Service.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    public DbSet<User> Users => Set<User>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Subcategory> Subcategories => Set<Subcategory>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
@@ -14,6 +15,36 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // User configuration
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+
+        // User relationships
+        modelBuilder.Entity<Accessory>()
+            .HasOne(a => a.User)
+            .WithMany(u => u.Accessories)
+            .HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<Slingshot>()
+            .HasOne(s => s.User)
+            .WithMany(u => u.Slingshots)
+            .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<Category>()
+            .HasOne(c => c.User)
+            .WithMany(u => u.Categories)
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Subcategory>()
+            .HasOne(sc => sc.User)
+            .WithMany(u => u.Subcategories)
+            .HasForeignKey(sc => sc.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Category>()
             .HasIndex(c => c.Name)
@@ -27,7 +58,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(sc => sc.Category)
             .WithMany(c => c.Subcategories)
             .HasForeignKey(sc => sc.CategoryId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Accessory>()
             .HasOne(a => a.Category)
@@ -55,7 +86,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(a_s => a_s.Slingshot)
             .WithMany(s => s.AccessorySlingshots)
             .HasForeignKey(a_s => a_s.SlingshotId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Slingshot>()
             .HasIndex(s => new { s.Year, s.Model, s.Color })

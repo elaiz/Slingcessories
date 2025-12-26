@@ -1,7 +1,84 @@
 ﻿@page "/"
+@using Slingcessories.Services
+@inject UserStateService UserStateService
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
 <h1>Slingcessories!</h1>
 
-A place where you can keep track of your Slingshot stuff
+@if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+{
+    <div class="alert alert-info mt-4" role="alert">
+        <h4 class="alert-heading">
+            <i class="bi bi-info-circle"></i> Welcome to Slingcessories!
+        </h4>
+        <p>A place where you can keep track of your Slingshot stuff.</p>
+        <hr />
+        <p class="mb-0">
+            <strong>To get started:</strong> Please select a user from the dropdown above, or 
+            <a href="/register" class="alert-link">register a new account</a> to begin managing your slingshots and accessories.
+        </p>
+    </div>
+}
+else
+{
+    <p>A place where you can keep track of your Slingshot stuff</p>
+    
+    <div class="mt-4">
+        <h3>Quick Navigation</h3>
+        <div class="row g-3 mt-2">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-grid-3x3-gap"></i> Accessories
+                        </h5>
+                        <p class="card-text">Manage your slingshot accessories collection.</p>
+                        <a href="/accessories" class="btn btn-primary">View Accessories</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-bullseye"></i> Slingshots
+                        </h5>
+                        <p class="card-text">Keep track of your slingshot models.</p>
+                        <a href="/slingshots" class="btn btn-primary">View Slingshots</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-tags"></i> Categories
+                        </h5>
+                        <p class="card-text">Organize with custom categories.</p>
+                        <a href="/categories" class="btn btn-primary">View Categories</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        UserStateService.OnUserChanged += HandleUserChanged;
+    }
+
+    private void HandleUserChanged()
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
+    }
+}

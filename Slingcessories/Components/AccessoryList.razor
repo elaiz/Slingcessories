@@ -1,7 +1,10 @@
 @using Slingcessories.Models
+@using Slingcessories.Services
 @inject HttpClient Http
 @inject IConfiguration Configuration
 @inject IJSRuntime JS
+@inject UserStateService UserStateService
+@implements IDisposable
 
 <PageTitle>@(Wishlist ? "Wishlist" : "Accessories")</PageTitle>
 <h1>@(Wishlist ? "Wishlist" : "Accessories")</h1>
@@ -461,6 +464,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to user change events
+        UserStateService.OnUserChanged += HandleUserChanged;
+        
         try
         {
             error = null;
@@ -471,8 +477,14 @@
 
             if (online)
             {
-                // Use relative URL - HttpClient already has BaseAddress set
-                var data = await Http.GetFromJsonAsync<List<Accessory>>($"api/accessories?wishlist={Wishlist.ToString().ToLower()}");
+                // Build URL with userId parameter if a user is selected
+                var accessoriesUrl = $"api/accessories?wishlist={Wishlist.ToString().ToLower()}";
+                if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+                {
+                    accessoriesUrl += $"&userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+                }
+
+                var data = await Http.GetFromJsonAsync<List<Accessory>>(accessoriesUrl);
                 Items = data ?? new List<Accessory>();
 
                 // Cache latest payload offline
@@ -496,6 +508,54 @@
         {
             isLoading = false;
         }
+    }
+
+    private void HandleUserChanged()
+    {
+        // Reload data when user changes
+        InvokeAsync(async () =>
+        {
+            try
+            {
+                error = null;
+                isLoading = true;
+                StateHasChanged();
+
+                var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
+                if (online)
+                {
+                    // Build URL with userId parameter if a user is selected
+                    var accessoriesUrl = $"api/accessories?wishlist={Wishlist.ToString().ToLower()}";
+                    if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+                    {
+                        accessoriesUrl += $"&userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+                      }
+
+                    var data = await Http.GetFromJsonAsync<List<Accessory>>(accessoriesUrl);
+                    Items = data ?? new List<Accessory>();
+
+                    // Cache latest payload offline
+                    var cacheKey = $"accessories_{Wishlist}";
+                    await JS.InvokeVoidAsync("indexedDbHelper.set", cacheKey, Items);
+
+                    // Reload categories and slingshots for the new user
+                    categories.Clear();
+                    slingshots.Clear();
+                    await LoadCategoriesAsync();
+                    await LoadSlingshotsAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                error = $"Failed to load accessories: {ex.Message}";
+                Items = new List<Accessory>();
+            }
+            finally
+            {
+                isLoading = false;
+                StateHasChanged();
+            }
+        });
     }
 
     /* Delete Accessory */
@@ -591,6 +651,13 @@
                 return;
             }
 
+            // Ensure user is selected
+            if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+            {
+                createError = "Please select a user before creating accessories.";
+                return;
+            }
+
             // Map to CreateAccessoryDto expected by API
             var payload = new CreateAccessoryPayload
             {
@@ -602,7 +669,8 @@
                 Wishlist = createModel.Wishlist,
                 CategoryId = createModel.CategoryId,
                 SubcategoryId = createModel.SubcategoryId,
-                SlinghotIds = createModel.SlinghotIds ?? new List<int>()
+                SlinghotIds = createModel.SlinghotIds ?? new List<int>(),
+                UserId = UserStateService.CurrentUserId
             };
 
             var response = await Http.PostAsJsonAsync("api/accessories", payload);
@@ -656,7 +724,14 @@
 
     private async Task LoadCreateSubcategoriesAsync(int categoryId)
     {
-        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>($"api/categories/{categoryId}/subcategories");
+        // Build URL with userId parameter if a user is selected
+        var subcategoriesUrl = $"api/categories/{categoryId}/subcategories";
+        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            subcategoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+        }
+
+        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(subcategoriesUrl);
         createSubcategories = data ?? new();
     }
 
@@ -828,15 +903,27 @@
     {
         if (categories.Count > 0) return;
 
-        // Use relative URL - HttpClient already has BaseAddress set
-        var data = await Http.GetFromJsonAsync<List<CategoryOption>>("api/categories");
+        // Build URL with userId parameter if a user is selected
+        var categoriesUrl = "api/categories";
+        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            categoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+        }
+
+        var data = await Http.GetFromJsonAsync<List<CategoryOption>>(categoriesUrl);
         categories = data ?? new();
     }
 
     private async Task LoadSubcategoriesAsync(int categoryId)
     {
-        // Use relative URL - HttpClient already has BaseAddress set
-        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>($"api/categories/{categoryId}/subcategories");
+        // Build URL with userId parameter if a user is selected
+        var subcategoriesUrl = $"api/categories/{categoryId}/subcategories";
+        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            subcategoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+        }
+
+        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(subcategoriesUrl);
         subcategories = data ?? new();
     }
 
@@ -844,8 +931,14 @@
     {
         if (slingshots.Count > 0) return;
 
-        // Use relative URL - HttpClient already has BaseAddress set
-        var data = await Http.GetFromJsonAsync<List<SlingOption>>("api/slingshots");
+        // Build URL with userId parameter if a user is selected
+        var slingshotsUrl = "api/slingshots";
+        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            slingshotsUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+        }
+
+        var data = await Http.GetFromJsonAsync<List<SlingOption>>(slingshotsUrl);
         slingshots = data ?? new();
     }
 
@@ -952,6 +1045,7 @@
         public int CategoryId { get; set; }
         public int? SubcategoryId { get; set; }
         public List<int> SlinghotIds { get; set; } = new();
+        public string UserId { get; set; } = string.Empty;
     }
 
     private void SetViewMode(ViewMode mode)
@@ -965,5 +1059,10 @@
             expandedAccessories.Remove(accessoryId);
         else
             expandedAccessories.Add(accessoryId);
+    }
+
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
     }
 }

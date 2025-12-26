@@ -11,9 +11,16 @@ namespace Slingcessories.Service.Controllers;
 public class CategoriesController(AppDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll([FromQuery] string? userId)
     {
-        var results = await db.Categories
+        var query = db.Categories.AsQueryable();
+        
+        if (!string.IsNullOrEmpty(userId))
+        {
+            query = query.Where(c => c.UserId == userId);
+        }
+        
+        var results = await query
             .OrderBy(c => c.Name)
             .Select(c => new CategoryDto(c.Id, c.Name))
             .ToListAsync();
@@ -36,7 +43,11 @@ public class CategoriesController(AppDbContext db) : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Name))
             return BadRequest("Category name is required.");
 
-        var category = new Category { Name = dto.Name };
+        var category = new Category 
+        { 
+            Name = dto.Name,
+            UserId = dto.UserId
+        };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
 
@@ -85,13 +96,19 @@ public class CategoriesController(AppDbContext db) : ControllerBase
     }
 
     [HttpGet("{categoryId:int}/subcategories")]
-    public async Task<ActionResult<IEnumerable<SubcategoryDto>>> GetSubcategories(int categoryId)
+    public async Task<ActionResult<IEnumerable<SubcategoryDto>>> GetSubcategories(int categoryId, [FromQuery] string? userId)
     {
         var exists = await db.Categories.AnyAsync(c => c.Id == categoryId);
         if (!exists) return NotFound();
 
-        var results = await db.Subcategories
-            .Where(sc => sc.CategoryId == categoryId)
+        var query = db.Subcategories.Where(sc => sc.CategoryId == categoryId);
+        
+        if (!string.IsNullOrEmpty(userId))
+        {
+            query = query.Where(sc => sc.UserId == userId);
+        }
+
+        var results = await query
             .OrderBy(sc => sc.Name)
             .Select(sc => new SubcategoryDto(sc.Id, sc.Name, sc.CategoryId))
             .ToListAsync();
