@@ -1,7 +1,10 @@
 @using Slingcessories.Models
+@using Slingcessories.Services
 @inject HttpClient Http
 @inject IConfiguration Configuration
 @inject IJSRuntime JS
+@inject UserStateService UserStateService
+@implements IDisposable
 
 <PageTitle>@(Wishlist ? "Wishlist" : "Accessories")</PageTitle>
 <h1>@(Wishlist ? "Wishlist" : "Accessories")</h1>
@@ -479,6 +482,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to user change events
+        UserStateService.OnUserChanged += HandleUserChanged;
+        
         try
         {
             error = null;
@@ -489,8 +495,10 @@
 
             if (online)
             {
-                // Use relative URL - HttpClient already has BaseAddress set
-                var data = await Http.GetFromJsonAsync<List<Accessory>>($"api/accessories?wishlist={Wishlist.ToString().ToLower()}");
+                // Accessories are shared across all users - no userId filtering
+                var accessoriesUrl = $"api/accessories?wishlist={Wishlist.ToString().ToLower()}";
+               
+                var data = await Http.GetFromJsonAsync<List<Accessory>>(accessoriesUrl);
                 Items = data ?? new List<Accessory>();
 
                 // Cache latest payload offline
@@ -514,6 +522,26 @@
         {
             isLoading = false;
         }
+    }
+
+    private void HandleUserChanged()
+    {
+        // Reload slingshots list when user changes (for associating accessories with slingshots)
+        InvokeAsync(async () =>
+        {
+            try
+            {
+                // Clear and reload slingshots for the new user
+                slingshots.Clear();
+                await LoadSlingshotsAsync();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                error = $"Failed to load slingshots: {ex.Message}";
+                StateHasChanged();
+            }
+        });
     }
 
     /* Delete Accessory */
@@ -609,7 +637,7 @@
                 return;
             }
 
-            // Map to CreateAccessoryDto expected by API
+            // Map to CreateAccessoryDto expected by API (no userId needed - accessories are shared)
             var payload = new CreateAccessoryPayload
             {
                 Title = createModel.Title.Trim(),
@@ -979,5 +1007,10 @@
             expandedAccessories.Remove(accessoryId);
         else
             expandedAccessories.Add(accessoryId);
+    }
+
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
     }
 }

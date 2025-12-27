@@ -14,6 +14,7 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
     public async Task<ActionResult<IEnumerable<AccessoryDto>>> GetAll([FromQuery] bool? wishlist)
     {
         var query = db.Accessories.AsQueryable();
+        
         if (wishlist is not null)
         {
             query = query.Where(a => a.Wishlist == wishlist);
