@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using Slingcessories.Services
 @inject UserStateService UserStateService
+@inject UserService UserService
 @inject NavigationManager Navigation
 @implements IDisposable
 
@@ -8,22 +9,54 @@
 
 <h1>Slingcessories!</h1>
 
-@if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+@if (isLoading)
 {
+    <p>Loading...</p>
+}
+else if (users == null || !users.Any())
+{
+    <!-- No users exist - show registration prompt -->
     <div class="alert alert-info mt-4" role="alert">
         <h4 class="alert-heading">
             <i class="bi bi-info-circle"></i> Welcome to Slingcessories!
         </h4>
         <p>A place where you can keep track of your Slingshot stuff.</p>
         <hr />
+        <p class="mb-3">
+            <strong>To get started:</strong> Please register an account to begin managing your slingshots and accessories.
+        </p>
+        <button class="btn btn-primary" @onclick="GoToRegistration">
+            <i class="bi bi-person-plus"></i> Register Now
+        </button>
+    </div>
+}
+else if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+{
+    <!-- Users exist but none selected - show dropdown -->
+    <div class="alert alert-info mt-4" role="alert">
+        <h4 class="alert-heading">
+            <i class="bi bi-info-circle"></i> Welcome Back!
+        </h4>
+        <p>Please select your user account to continue:</p>
+        
+        <div class="mb-3" style="max-width: 300px;">
+            <select class="form-select" @onchange="OnUserSelected" value="@UserStateService.CurrentUserId">
+                <option value="">Select User</option>
+                @foreach (var user in users)
+                {
+                    <option value="@user.Id">@user.FirstName @user.LastName</option>
+                }
+            </select>
+        </div>
+        
         <p class="mb-0">
-            <strong>To get started:</strong> Please select a user from the dropdown above, or 
-            <a href="/register" class="alert-link">register a new account</a> to begin managing your slingshots and accessories.
+            Or <button class="btn btn-link p-0 align-baseline" @onclick="GoToRegistration">register a new account</button>
         </p>
     </div>
 }
 else
 {
+    <!-- User is selected - show normal home content -->
     <p>A place where you can keep track of your Slingshot stuff</p>
     
     <div class="mt-4">
@@ -36,7 +69,7 @@ else
                             <i class="bi bi-grid-3x3-gap"></i> Accessories
                         </h5>
                         <p class="card-text">Manage your slingshot accessories collection.</p>
-                        <a href="/accessories" class="btn btn-primary">View Accessories</a>
+                        <a href="/accessories/false" class="btn btn-primary">View Accessories</a>
                     </div>
                 </div>
             </div>
@@ -67,14 +100,41 @@ else
 }
 
 @code {
-    protected override void OnInitialized()
+    private List<UserDto>? users;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
     {
         UserStateService.OnUserChanged += HandleUserChanged;
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        users = await UserService.GetAllUsersAsync();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task OnUserSelected(ChangeEventArgs e)
+    {
+        var userId = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await UserStateService.SetCurrentUserAsync(userId);
+        }
     }
 
     private void HandleUserChanged()
     {
+        InvokeAsync(async () => await LoadUsers());
         StateHasChanged();
+    }
+
+    private void GoToRegistration()
+    {
+        Navigation.NavigateTo("/register");
     }
 
     public void Dispose()

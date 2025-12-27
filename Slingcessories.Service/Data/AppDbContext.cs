@@ -21,35 +21,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasIndex(u => u.Email)
             .IsUnique();
 
-        // User relationships
-        modelBuilder.Entity<Accessory>()
-            .HasOne(a => a.User)
-            .WithMany(u => u.Accessories)
-            .HasForeignKey(a => a.UserId)
-            .OnDelete(DeleteBehavior.NoAction);
-
+        // Slingshot belongs to User
         modelBuilder.Entity<Slingshot>()
             .HasOne(s => s.User)
             .WithMany(u => u.Slingshots)
             .HasForeignKey(s => s.UserId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        modelBuilder.Entity<Category>()
-            .HasOne(c => c.User)
-            .WithMany(u => u.Categories)
-            .HasForeignKey(c => c.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Subcategory>()
-            .HasOne(sc => sc.User)
-            .WithMany(u => u.Subcategories)
-            .HasForeignKey(sc => sc.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
+        // Categories are shared - no User relationship
         modelBuilder.Entity<Category>()
             .HasIndex(c => c.Name)
             .IsUnique();
 
+        // Subcategories are shared - no User relationship
         modelBuilder.Entity<Subcategory>()
             .HasIndex(sc => new { sc.CategoryId, sc.Name })
             .IsUnique();
@@ -59,6 +43,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(c => c.Subcategories)
             .HasForeignKey(sc => sc.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Accessories are shared - no User relationship
+        modelBuilder.Entity<Accessory>()
+            .Property(a => a.Price)
+            .HasPrecision(18, 2);
 
         modelBuilder.Entity<Accessory>()
             .HasOne(a => a.Category)

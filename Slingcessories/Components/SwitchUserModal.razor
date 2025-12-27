@@ -1,0 +1,183 @@
+@using Slingcessories.Services
+@inject UserService UserService
+@inject UserStateService UserStateService
+@implements IDisposable
+
+@if (showModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Switch User</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="Cancel" disabled="@isSwitching"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (availableUsers == null || !availableUsers.Any())
+                    {
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle"></i> No other users available to switch to.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label for="userSelect" class="form-label">Select a user:</label>
+                            <select id="userSelect" class="form-select" @bind="selectedUserId" disabled="@isSwitching">
+                                <option value="">-- Select User --</option>
+                                @foreach (var user in availableUsers)
+                                {
+                                    <option value="@user.Id">@user.FirstName @user.LastName</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mb-0">@errorMessage</div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel" disabled="@isSwitching">
+                        Cancel
+                    </button>
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            @onclick="SwitchUser" 
+                            disabled="@(isSwitching || string.IsNullOrEmpty(selectedUserId) || availableUsers == null || !availableUsers.Any())">
+                        @if (isSwitching)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Show { get; set; }
+    
+    [Parameter]
+    public EventCallback<bool> ShowChanged { get; set; }
+
+    private bool showModal => Show;
+    private bool isLoading = false;
+    private bool isSwitching = false;
+    private string? selectedUserId;
+    private string? errorMessage;
+    private List<UserDto>? availableUsers;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Show && availableUsers == null)
+        {
+            await LoadAvailableUsers();
+        }
+        
+        // Reset state when modal is opened
+        if (Show)
+        {
+            isSwitching = false;
+            errorMessage = null;
+        }
+        
+        // Reset state when modal is closed
+        if (!Show)
+        {
+            ResetModalState();
+        }
+    }
+
+    private async Task LoadAvailableUsers()
+    {
+        isLoading = true;
+        errorMessage = null;
+        
+        try
+        {
+            var allUsers = await UserService.GetAllUsersAsync();
+            
+            // Filter out the current user
+            availableUsers = allUsers
+                .Where(u => u.Id != UserStateService.CurrentUserId)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load users: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SwitchUser()
+    {
+        if (string.IsNullOrEmpty(selectedUserId) || isSwitching)
+            return;
+
+        isSwitching = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await UserStateService.SetCurrentUserAsync(selectedUserId);
+            
+            // Small delay to ensure the state change is processed
+            await Task.Delay(100);
+            
+            // Close the modal
+            await CloseModal();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to switch user: {ex.Message}";
+            isSwitching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Cancel()
+    {
+        if (!isSwitching)
+        {
+            await CloseModal();
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        ResetModalState();
+        await ShowChanged.InvokeAsync(false);
+    }
+
+    private void ResetModalState()
+    {
+        selectedUserId = null;
+        errorMessage = null;
+        availableUsers = null;
+        isSwitching = false;
+        isLoading = false;
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}

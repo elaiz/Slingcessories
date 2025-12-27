@@ -477,13 +477,9 @@
 
             if (online)
             {
-                // Build URL with userId parameter if a user is selected
+                // Accessories are shared across all users - no userId filtering
                 var accessoriesUrl = $"api/accessories?wishlist={Wishlist.ToString().ToLower()}";
-                if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
-                {
-                    accessoriesUrl += $"&userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-                }
-
+               
                 var data = await Http.GetFromJsonAsync<List<Accessory>>(accessoriesUrl);
                 Items = data ?? new List<Accessory>();
 
@@ -512,47 +508,19 @@
 
     private void HandleUserChanged()
     {
-        // Reload data when user changes
+        // Reload slingshots list when user changes (for associating accessories with slingshots)
         InvokeAsync(async () =>
         {
             try
             {
-                error = null;
-                isLoading = true;
+                // Clear and reload slingshots for the new user
+                slingshots.Clear();
+                await LoadSlingshotsAsync();
                 StateHasChanged();
-
-                var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
-                if (online)
-                {
-                    // Build URL with userId parameter if a user is selected
-                    var accessoriesUrl = $"api/accessories?wishlist={Wishlist.ToString().ToLower()}";
-                    if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
-                    {
-                        accessoriesUrl += $"&userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-                      }
-
-                    var data = await Http.GetFromJsonAsync<List<Accessory>>(accessoriesUrl);
-                    Items = data ?? new List<Accessory>();
-
-                    // Cache latest payload offline
-                    var cacheKey = $"accessories_{Wishlist}";
-                    await JS.InvokeVoidAsync("indexedDbHelper.set", cacheKey, Items);
-
-                    // Reload categories and slingshots for the new user
-                    categories.Clear();
-                    slingshots.Clear();
-                    await LoadCategoriesAsync();
-                    await LoadSlingshotsAsync();
-                }
             }
             catch (Exception ex)
             {
-                error = $"Failed to load accessories: {ex.Message}";
-                Items = new List<Accessory>();
-            }
-            finally
-            {
-                isLoading = false;
+                error = $"Failed to load slingshots: {ex.Message}";
                 StateHasChanged();
             }
         });
@@ -651,14 +619,7 @@
                 return;
             }
 
-            // Ensure user is selected
-            if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
-            {
-                createError = "Please select a user before creating accessories.";
-                return;
-            }
-
-            // Map to CreateAccessoryDto expected by API
+            // Map to CreateAccessoryDto expected by API (no userId needed - accessories are shared)
             var payload = new CreateAccessoryPayload
             {
                 Title = createModel.Title.Trim(),
@@ -669,8 +630,7 @@
                 Wishlist = createModel.Wishlist,
                 CategoryId = createModel.CategoryId,
                 SubcategoryId = createModel.SubcategoryId,
-                SlinghotIds = createModel.SlinghotIds ?? new List<int>(),
-                UserId = UserStateService.CurrentUserId
+                SlinghotIds = createModel.SlinghotIds ?? new List<int>()
             };
 
             var response = await Http.PostAsJsonAsync("api/accessories", payload);
@@ -724,13 +684,8 @@
 
     private async Task LoadCreateSubcategoriesAsync(int categoryId)
     {
-        // Build URL with userId parameter if a user is selected
+        // Categories and subcategories are shared - no userId needed
         var subcategoriesUrl = $"api/categories/{categoryId}/subcategories";
-        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
-        {
-            subcategoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-        }
-
         var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(subcategoriesUrl);
         createSubcategories = data ?? new();
     }
@@ -903,26 +858,16 @@
     {
         if (categories.Count > 0) return;
 
-        // Build URL with userId parameter if a user is selected
+        // Categories are shared across all users - no userId filtering
         var categoriesUrl = "api/categories";
-        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
-        {
-            categoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-        }
-
         var data = await Http.GetFromJsonAsync<List<CategoryOption>>(categoriesUrl);
         categories = data ?? new();
     }
 
     private async Task LoadSubcategoriesAsync(int categoryId)
     {
-        // Build URL with userId parameter if a user is selected
+        // Subcategories are shared - no userId filtering
         var subcategoriesUrl = $"api/categories/{categoryId}/subcategories";
-        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
-        {
-            subcategoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-        }
-
         var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(subcategoriesUrl);
         subcategories = data ?? new();
     }
@@ -931,7 +876,7 @@
     {
         if (slingshots.Count > 0) return;
 
-        // Build URL with userId parameter if a user is selected
+        // Slingshots belong to users - filter by current user
         var slingshotsUrl = "api/slingshots";
         if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
         {
@@ -1033,7 +978,7 @@
         public List<int>? SlinghotIds { get; set; }
     }
 
-    // Payload sent to server (matches CreateAccessoryDto on backend)
+    // Payload sent to server (matches CreateAccessoryDto on backend - no UserId)
     private sealed class CreateAccessoryPayload
     {
         public string Title { get; set; } = string.Empty;
@@ -1045,7 +990,6 @@
         public int CategoryId { get; set; }
         public int? SubcategoryId { get; set; }
         public List<int> SlinghotIds { get; set; } = new();
-        public string UserId { get; set; } = string.Empty;
     }
 
     private void SetViewMode(ViewMode mode)

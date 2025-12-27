@@ -305,15 +305,9 @@ else
         errorMessage = null;
         try
         {
-            // Build URLs with userId parameter if a user is selected
+            // Categories and subcategories are shared across all users - no userId filtering
             var categoriesUrl = "api/categories";
             var subcategoriesUrl = "api/subcategories";
-            
-            if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
-            {
-                categoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-                subcategoriesUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-            }
 
             var catResult = await Http.GetFromJsonAsync<List<CategoryDto>>(categoriesUrl);
             categories = catResult ?? [];
@@ -485,18 +479,11 @@ else
         createError = null;
         try
         {
-            // Ensure user is selected
-            if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
-            {
-                createError = "Please select a user before creating categories.";
-                return;
-            }
-
             var trimmed = createCategoryModel.Name.Trim();
+            // Categories are shared - no userId needed
             var payload = new CreateCategoryPayload 
             { 
-                Name = trimmed,
-                UserId = UserStateService.CurrentUserId
+                Name = trimmed
             };
             var response = await Http.PostAsJsonAsync("api/categories", payload);
 
@@ -643,19 +630,12 @@ else
         createSubcategoryError = null;
         try
         {
-            // Ensure user is selected
-            if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
-            {
-                createSubcategoryError = "Please select a user before creating subcategories.";
-                return;
-            }
-
             var trimmed = createSubcategoryModel.Name.Trim();
+            // Subcategories are shared - no userId needed
             var payload = new CreateSubcategoryPayload 
             { 
                 Name = trimmed, 
-                CategoryId = selectedCategoryId.Value,
-                UserId = UserStateService.CurrentUserId
+                CategoryId = selectedCategoryId.Value
             };
             var response = await Http.PostAsJsonAsync("api/subcategories", payload);
 
@@ -732,14 +712,12 @@ else
     private sealed class CreateCategoryPayload
     {
         public string Name { get; set; } = string.Empty;
-        public string UserId { get; set; } = string.Empty;
     }
 
     private sealed class CreateSubcategoryPayload
     {
         public string Name { get; set; } = string.Empty;
         public int CategoryId { get; set; }
-        public string UserId { get; set; } = string.Empty;
     }
 
     public void Dispose()

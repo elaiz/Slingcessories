@@ -8,8 +8,5 @@ public class Subcategory
     public int CategoryId { get; set; }
     public Category? Category { get; set; }
 
-    public string UserId { get; set; } = string.Empty;
-    public User? User { get; set; }
-
     public ICollection<Accessory> Accessories { get; set; } = new List<Accessory>();
 }

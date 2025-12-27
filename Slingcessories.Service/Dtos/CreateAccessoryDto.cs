@@ -9,6 +9,5 @@ public record CreateAccessoryDto(
     bool Wishlist,
     int CategoryId,
     int? SubcategoryId,
-    List<int> SlinghotIds,
-    string UserId
+    List<int> SlinghotIds
 );

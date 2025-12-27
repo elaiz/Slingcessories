@@ -1,5 +1,9 @@
 ﻿@inherits LayoutComponentBase
 @using Slingcessories.Components
+@using Slingcessories.Services
+@inject UserStateService UserStateService
+@inject UserService UserService
+@implements IDisposable
 
 <div class="page">
     <div class="sidebar">
@@ -9,7 +13,37 @@
     <main>
         <div class="top-row px-4 d-flex justify-content-between align-items-center flex-wrap">
             <div class="d-flex align-items-center gap-2 flex-grow-1">
-                <UserSelector />
+                @if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+                {
+                    @if (currentUser != null)
+                    {
+                        <span class="me-2">
+                            <i class="bi bi-person-circle"></i> <strong>@currentUser.FirstName @currentUser.LastName</strong>
+                        </span>
+                        <button class="btn btn-link p-0 text-decoration-none" @onclick="ShowSwitchUserModal">
+                            Switch User
+                        </button>
+                    }
+                    else if (isLoadingUser)
+                    {
+                        <span class="me-2 text-muted">
+                            <i class="bi bi-person-circle"></i> Loading...
+                        </span>
+                        <button class="btn btn-link p-0 text-decoration-none" @onclick="ShowSwitchUserModal">
+                            Switch User
+                        </button>
+                    }
+                    else
+                    {
+                        <!-- User ID exists but couldn't load user details - still show switch button -->
+                        <span class="me-2 text-warning">
+                            <i class="bi bi-exclamation-triangle"></i> User Error
+                        </span>
+                        <button class="btn btn-link p-0 text-decoration-none" @onclick="ShowSwitchUserModal">
+                            Switch User
+                        </button>
+                    }
+                }
             </div>
             <div class="d-flex gap-2 align-items-center">
                 <NavLink href="/register" class="btn btn-sm btn-outline-primary">
@@ -29,3 +63,91 @@
         </article>
     </main>
 </div>
+
+<SwitchUserModal Show="@showSwitchModal" ShowChanged="@HandleSwitchModalChanged" />
+
+@code {
+    private bool showSwitchModal = false;
+    private UserDto? currentUser;
+    private bool isLoadingUser = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserStateService.OnUserChanged += HandleUserChanged;
+        await LoadCurrentUser();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && currentUser == null && !string.IsNullOrEmpty(UserStateService.CurrentUserId) && !isLoadingUser)
+        {
+            // In case the user wasn't loaded in OnInitializedAsync, try again after first render
+            await LoadCurrentUser();
+        }
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            isLoadingUser = true;
+            StateHasChanged();
+            
+            try
+            {
+                Console.WriteLine($"Loading user with ID: {UserStateService.CurrentUserId}");
+                currentUser = await UserService.GetUserByIdAsync(UserStateService.CurrentUserId);
+                
+                if (currentUser != null)
+                {
+                    Console.WriteLine($"Loaded user: {currentUser.FirstName} {currentUser.LastName}");
+                }
+                else
+                {
+                    Console.WriteLine("GetUserByIdAsync returned null");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading current user: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                currentUser = null;
+            }
+            finally
+            {
+                isLoadingUser = false;
+                StateHasChanged();
+            }
+        }
+        else
+        {
+            currentUser = null;
+            isLoadingUser = false;
+        }
+    }
+
+    private void HandleUserChanged()
+    {
+        Console.WriteLine("User changed event triggered");
+        InvokeAsync(async () => 
+        {
+            await LoadCurrentUser();
+        });
+    }
+
+    private void ShowSwitchUserModal()
+    {
+        showSwitchModal = true;
+    }
+
+    private void HandleSwitchModalChanged(bool show)
+    {
+        showSwitchModal = show;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
+    }
+}

@@ -1,3 +1,3 @@
 namespace Slingcessories.Service.Dtos;
 
-public record CreateCategoryDto(string Name, string UserId);
+public record CreateCategoryDto(string Name);

@@ -1,5 +1,6 @@
 ﻿@using Slingcessories.Services
 @inject UserStateService UserStateService
+@inject NavigationManager Navigation
 
 <Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
@@ -18,5 +19,16 @@
     protected override async Task OnInitializedAsync()
     {
         await UserStateService.InitializeAsync();
+        
+        // If no user is selected and not already on register page, redirect to home
+        // Home will handle the logic of showing register if no users exist
+        if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
+            if (!currentPath.StartsWith("register", StringComparison.OrdinalIgnoreCase))
+            {
+                Navigation.NavigateTo("/", replace: true);
+            }
+        }
     }
 }

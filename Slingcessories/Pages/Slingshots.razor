@@ -198,14 +198,13 @@ else
         errorMessage = null;
         try
         {
-            // Build URLs with userId parameter if a user is selected
+            // Build URLs - only slingshots are filtered by userId
             var slingshotUrl = "api/slingshots";
-            var accessoryUrl = "api/accessories";
+            var accessoryUrl = "api/accessories"; // Accessories are shared, no userId needed
             
             if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
             {
                 slingshotUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
-                accessoryUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
             }
 
             var slingshotResult = await Http.GetFromJsonAsync<List<SlinghotDto>>(slingshotUrl);

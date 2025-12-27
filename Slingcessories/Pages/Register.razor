@@ -3,12 +3,37 @@
 @inject UserService UserService
 @inject UserStateService UserStateService
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Register - Slingcessories</PageTitle>
 
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-6">
+            @if (users != null && users.Any())
+            {
+                <!-- Show user dropdown if users exist -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0">Select Existing User</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Choose from registered users:</p>
+                        <select class="form-select mb-3" @onchange="OnUserSelected" value="@UserStateService.CurrentUserId">
+                            <option value="">Select User</option>
+                            @foreach (var user in users)
+                            {
+                                <option value="@user.Id">@user.FirstName @user.LastName</option>
+                            }
+                        </select>
+                        <div class="text-center">
+                            <small class="text-muted">Or register a new user below</small>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            <!-- Registration form -->
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h3 class="mb-0">Register New User</h3>
@@ -77,6 +102,29 @@
     private bool isSubmitting = false;
     private string? errorMessage;
     private string? successMessage;
+    private List<UserDto>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserStateService.OnUserChanged += HandleUserChanged;
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await UserService.GetAllUsersAsync();
+        StateHasChanged();
+    }
+
+    private async Task OnUserSelected(ChangeEventArgs e)
+    {
+        var userId = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await UserStateService.SetCurrentUserAsync(userId);
+            Navigation.NavigateTo("/");
+        }
+    }
 
     private async Task HandleRegistration()
     {
@@ -115,9 +163,20 @@
         }
     }
 
+    private void HandleUserChanged()
+    {
+        InvokeAsync(async () => await LoadUsers());
+        StateHasChanged();
+    }
+
     private void GoBack()
     {
         Navigation.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
     }
 
     private class RegistrationModel

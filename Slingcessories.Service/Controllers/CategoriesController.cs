@@ -11,16 +11,9 @@ namespace Slingcessories.Service.Controllers;
 public class CategoriesController(AppDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll([FromQuery] string? userId)
+    public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll()
     {
-        var query = db.Categories.AsQueryable();
-        
-        if (!string.IsNullOrEmpty(userId))
-        {
-            query = query.Where(c => c.UserId == userId);
-        }
-        
-        var results = await query
+        var results = await db.Categories
             .OrderBy(c => c.Name)
             .Select(c => new CategoryDto(c.Id, c.Name))
             .ToListAsync();
@@ -45,8 +38,7 @@ public class CategoriesController(AppDbContext db) : ControllerBase
 
         var category = new Category 
         { 
-            Name = dto.Name,
-            UserId = dto.UserId
+            Name = dto.Name
         };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
@@ -96,19 +88,13 @@ public class CategoriesController(AppDbContext db) : ControllerBase
     }
 
     [HttpGet("{categoryId:int}/subcategories")]
-    public async Task<ActionResult<IEnumerable<SubcategoryDto>>> GetSubcategories(int categoryId, [FromQuery] string? userId)
+    public async Task<ActionResult<IEnumerable<SubcategoryDto>>> GetSubcategories(int categoryId)
     {
         var exists = await db.Categories.AnyAsync(c => c.Id == categoryId);
         if (!exists) return NotFound();
 
-        var query = db.Subcategories.Where(sc => sc.CategoryId == categoryId);
-        
-        if (!string.IsNullOrEmpty(userId))
-        {
-            query = query.Where(sc => sc.UserId == userId);
-        }
-
-        var results = await query
+        var results = await db.Subcategories
+            .Where(sc => sc.CategoryId == categoryId)
             .OrderBy(sc => sc.Name)
             .Select(sc => new SubcategoryDto(sc.Id, sc.Name, sc.CategoryId))
             .ToListAsync();
