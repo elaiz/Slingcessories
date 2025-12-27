@@ -7,4 +7,6 @@ public class AccessorySlingshot
 
     public int SlingshotId { get; set; }
     public Slingshot Slingshot { get; set; } = null!;
+
+    public int Quantity { get; set; }
 }

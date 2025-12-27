@@ -3,15 +3,15 @@ namespace Slingcessories.Service.Dtos;
 public record AccessoryDto(
     int Id,
     string Title,
-    string? PictureUrl,   // now nullable
-    int Units,
+    string? PictureUrl,
     decimal Price,
-    string? Url,          // now nullable
+    string? Url,
     bool Wishlist,
     int CategoryId,
     int? SubcategoryId,
     string CategoryName,
     string? SubcategoryName,
-    List<int> SlinghotIds,
-    List<string> SlinghotDescriptions
+    List<int>? SlinghotIds,  // Make nullable for backward compatibility
+    List<string>? SlinghotDescriptions,  // Make nullable for backward compatibility
+    Dictionary<int, int> SlinghotQuantities  // SlingshotId -> Quantity
 );

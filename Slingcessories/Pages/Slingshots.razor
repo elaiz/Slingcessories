@@ -78,7 +78,7 @@ else
                             </div>
                         </div>
 
-                        @* Show accessories for this slingshot *@
+                        @* Show accessories for this slingshot with quantities *@
                         @if (expandedSlingshots.Contains(s.Id))
                         {
                             var slingshotAccessories = GetAccessoriesForSlingshot(s.Id);
@@ -89,9 +89,14 @@ else
                                     <ul class="list-unstyled">
                                         @foreach (var acc in slingshotAccessories)
                                         {
+                                            var quantity = acc.SlinghotQuantities?.GetValueOrDefault(s.Id, 0) ?? 0;
                                             <li class="mb-1">
                                                 <span class="bi bi-tag me-1"></span>@acc.Title
                                                 <span class="text-muted small">(@acc.CategoryName)</span>
+                                                @if (quantity > 0)
+                                                {
+                                                    <span class="badge bg-primary ms-2">Qty: @quantity</span>
+                                                }
                                             </li>
                                         }
                                     </ul>
@@ -378,7 +383,8 @@ else
         int Id,
         string Title,
         string CategoryName,
-        List<int>? SlinghotIds
+        List<int>? SlinghotIds,
+        Dictionary<int, int>? SlinghotQuantities
     );
 
     private sealed class SlinghotEditModel

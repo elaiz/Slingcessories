@@ -45,9 +45,6 @@ namespace Slingcessories.Service.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Units")
-                        .HasColumnType("int");
-
                     b.Property<string>("Url")
                         .HasColumnType("nvarchar(max)");
 
@@ -69,6 +66,9 @@ namespace Slingcessories.Service.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("SlingshotId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
                         .HasColumnType("int");
 
                     b.HasKey("AccessoryId", "SlingshotId");

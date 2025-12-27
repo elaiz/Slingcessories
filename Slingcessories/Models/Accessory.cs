@@ -14,11 +14,13 @@ public class Accessory
     public string Subcategory { get; set; } = string.Empty;
 
     public string Title { get; set; } = string.Empty;
-    public int Units { get; set; }
     public decimal Price { get; set; }
     public string Url { get; set; } = string.Empty;
     public bool Wishlist { get; set; }
     
     [JsonPropertyName("slinghotDescriptions")]
     public List<string>? SlinghotDescriptions { get; set; }
+    
+    [JsonPropertyName("slinghotQuantities")]
+    public Dictionary<int, int>? SlinghotQuantities { get; set; }
 }
