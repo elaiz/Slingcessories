@@ -1,6 +1,9 @@
 @page "/slingshots"
 @using System.Net.Http.Json
+@using Slingcessories.Services
 @inject HttpClient Http
+@inject UserStateService UserStateService
+@implements IDisposable
 
 <PageTitle>Slingshots</PageTitle>
 
@@ -176,7 +179,18 @@ else
     private bool savingCreate;
     private string? createError;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to user change events
+        UserStateService.OnUserChanged += HandleUserChanged;
+        await LoadAsync();
+    }
+
+    private void HandleUserChanged()
+    {
+        // Reload data when user changes
+        InvokeAsync(async () => await LoadAsync());
+    }
 
     private async Task LoadAsync()
     {
@@ -184,11 +198,19 @@ else
         errorMessage = null;
         try
         {
-            // Use relative URLs - HttpClient already has BaseAddress set
-            var slingshotResult = await Http.GetFromJsonAsync<List<SlinghotDto>>("api/slingshots");
+            // Build URLs - only slingshots are filtered by userId
+            var slingshotUrl = "api/slingshots";
+            var accessoryUrl = "api/accessories"; // Accessories are shared, no userId needed
+            
+            if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+            {
+                slingshotUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+            }
+
+            var slingshotResult = await Http.GetFromJsonAsync<List<SlinghotDto>>(slingshotUrl);
             slingshots = slingshotResult ?? [];
 
-            var accessoryResult = await Http.GetFromJsonAsync<List<AccessoryInfoDto>>("api/accessories");
+            var accessoryResult = await Http.GetFromJsonAsync<List<AccessoryInfoDto>>(accessoryUrl);
             accessories = accessoryResult ?? [];
         }
         catch (Exception ex)
@@ -327,11 +349,19 @@ else
         createError = null;
         try
         {
+            // Ensure user is selected
+            if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+            {
+                createError = "Please select a user before creating slingshots.";
+                return;
+            }
+
             var payload = new CreateSlingshotPayload 
             { 
                 Year = createModel.Year,
                 Model = createModel.Model.Trim(), 
-                Color = createModel.Color.Trim() 
+                Color = createModel.Color.Trim(),
+                UserId = UserStateService.CurrentUserId
             };
             // Use relative URL
             var response = await Http.PostAsJsonAsync("api/slingshots", payload);
@@ -371,6 +401,11 @@ else
         if (e.Key == "Escape") CancelCreate();
     }
 
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
+    }
+
     /* Records / Models */
     private sealed record SlinghotDto(int Id, int Year, string Model, string Color);
 
@@ -401,5 +436,6 @@ else
         public int Year { get; set; }
         public string Model { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
     }
 }

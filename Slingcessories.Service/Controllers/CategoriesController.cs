@@ -36,7 +36,10 @@ public class CategoriesController(AppDbContext db) : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Name))
             return BadRequest("Category name is required.");
 
-        var category = new Category { Name = dto.Name };
+        var category = new Category 
+        { 
+            Name = dto.Name
+        };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
 

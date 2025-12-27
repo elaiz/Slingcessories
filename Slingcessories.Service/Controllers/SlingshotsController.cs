@@ -11,9 +11,16 @@ namespace Slingcessories.Service.Controllers;
 public class SlingshotsController(AppDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<SlinghotDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<SlinghotDto>>> GetAll([FromQuery] string? userId)
     {
-        var results = await db.Slingshots
+        var query = db.Slingshots.AsQueryable();
+        
+        if (!string.IsNullOrEmpty(userId))
+        {
+            query = query.Where(s => s.UserId == userId);
+        }
+        
+        var results = await query
             .OrderBy(s => s.Year)
             .ThenBy(s => s.Model)
             .Select(s => new SlinghotDto(s.Id, s.Year, s.Model, s.Color))
@@ -44,7 +51,8 @@ public class SlingshotsController(AppDbContext db) : ControllerBase
         { 
             Year = dto.Year, 
             Model = dto.Model, 
-            Color = dto.Color 
+            Color = dto.Color,
+            UserId = dto.UserId
         };
         
         db.Slingshots.Add(slingshot);

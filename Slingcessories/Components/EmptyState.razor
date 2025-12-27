@@ -1,0 +1,50 @@
+@using Slingcessories.Services
+@inject UserStateService UserStateService
+
+@if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+{
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="bi bi-person-x me-3 fs-4"></i>
+        <div>
+            <strong>No User Selected</strong>
+            <p class="mb-0">Please select a user from the dropdown above to view @ContentType.</p>
+        </div>
+    </div>
+}
+else if (ShowEmptyMessage)
+{
+    <div class="text-center py-5">
+        <i class="bi @Icon text-muted" style="font-size: 4rem;"></i>
+        <h4 class="mt-3 text-muted">@EmptyTitle</h4>
+        <p class="text-muted">@EmptyMessage</p>
+        @if (!string.IsNullOrEmpty(ActionText) && !string.IsNullOrEmpty(ActionUrl))
+        {
+            <a href="@ActionUrl" class="btn btn-primary mt-2">
+                <i class="bi bi-plus-circle me-1"></i> @ActionText
+            </a>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string ContentType { get; set; } = "content";
+
+    [Parameter]
+    public bool ShowEmptyMessage { get; set; } = false;
+
+    [Parameter]
+    public string Icon { get; set; } = "bi-inbox";
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "No Items Found";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Get started by creating your first item.";
+
+    [Parameter]
+    public string? ActionText { get; set; }
+
+    [Parameter]
+    public string? ActionUrl { get; set; }
+}

@@ -11,7 +11,7 @@ using Slingcessories.Service.Data;
 namespace Slingcessories.Service.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251224133156_InitialCreate")]
+    [Migration("20251226000857_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -54,6 +54,10 @@ namespace Slingcessories.Service.Migrations
                     b.Property<string>("Url")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<bool>("Wishlist")
                         .HasColumnType("bit");
 
@@ -62,6 +66,8 @@ namespace Slingcessories.Service.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("SubcategoryId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Accessories");
                 });
@@ -93,10 +99,16 @@ namespace Slingcessories.Service.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Categories");
                 });
@@ -117,10 +129,16 @@ namespace Slingcessories.Service.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int>("Year")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("Year", "Model", "Color")
                         .IsUnique();
@@ -143,12 +161,43 @@ namespace Slingcessories.Service.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("CategoryId", "Name")
                         .IsUnique();
 
                     b.ToTable("Subcategories");
+                });
+
+            modelBuilder.Entity("Slingcessories.Service.Models.User", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Slingcessories.Service.Models.Accessory", b =>
@@ -164,9 +213,17 @@ namespace Slingcessories.Service.Migrations
                         .HasForeignKey("SubcategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Slingcessories.Service.Models.User", "User")
+                        .WithMany("Accessories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.Navigation("Category");
 
                     b.Navigation("Subcategory");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Slingcessories.Service.Models.AccessorySlingshot", b =>
@@ -180,7 +237,7 @@ namespace Slingcessories.Service.Migrations
                     b.HasOne("Slingcessories.Service.Models.Slingshot", "Slingshot")
                         .WithMany("AccessorySlingshots")
                         .HasForeignKey("SlingshotId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Accessory");
@@ -188,15 +245,45 @@ namespace Slingcessories.Service.Migrations
                     b.Navigation("Slingshot");
                 });
 
+            modelBuilder.Entity("Slingcessories.Service.Models.Category", b =>
+                {
+                    b.HasOne("Slingcessories.Service.Models.User", "User")
+                        .WithMany("Categories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Slingcessories.Service.Models.Slingshot", b =>
+                {
+                    b.HasOne("Slingcessories.Service.Models.User", "User")
+                        .WithMany("Slingshots")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Slingcessories.Service.Models.Subcategory", b =>
                 {
                     b.HasOne("Slingcessories.Service.Models.Category", "Category")
                         .WithMany("Subcategories")
                         .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Slingcessories.Service.Models.User", "User")
+                        .WithMany("Subcategories")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Category");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Slingcessories.Service.Models.Accessory", b =>
@@ -217,6 +304,17 @@ namespace Slingcessories.Service.Migrations
             modelBuilder.Entity("Slingcessories.Service.Models.Subcategory", b =>
                 {
                     b.Navigation("Accessories");
+                });
+
+            modelBuilder.Entity("Slingcessories.Service.Models.User", b =>
+                {
+                    b.Navigation("Accessories");
+
+                    b.Navigation("Categories");
+
+                    b.Navigation("Slingshots");
+
+                    b.Navigation("Subcategories");
                 });
 #pragma warning restore 612, 618
         }
