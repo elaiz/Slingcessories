@@ -7,16 +7,14 @@
 
 <PageTitle>Slingshots</PageTitle>
 
-<div class="mb-2">
-    <NavLink href="/settings" class="btn btn-link p-0 text-decoration-none" title="Back to Settings">
-        &larr; Back to Settings
-    </NavLink>
-</div>
-
 <h1>Slingshots</h1>
 
 <div class="mb-3 d-flex gap-2">
     <button class="btn btn-success btn-sm" @onclick="ShowCreateModal">+ New Slingshot</button>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleExpandAll">
+        <span class="@(allExpanded ? "bi bi-chevron-up" : "bi bi-chevron-down") me-1"></span>
+        @(allExpanded ? "Collapse All" : "Expand All")
+    </button>
     <button class="btn btn-outline-primary btn-sm"
             @onclick="Reload"
             disabled="@saving || isLoading">Refresh</button>
@@ -41,7 +39,7 @@ else
         <ul class="list-group mb-3">
             @foreach (var s in slingshots)
             {
-                <li class="list-group-item">
+                <li class="list-group-item border">
                     @if (editingId == s.Id)
                     {
                         <div class="d-flex align-items-center gap-2">
@@ -62,11 +60,42 @@ else
                     else
                     {
                         <div class="d-flex justify-content-between align-items-center">
-                            <span><strong>@s.Year @s.Model</strong> <span class="text-muted">(@s.Color)</span></span>
+                            <div class="d-flex align-items-center gap-2">
+                                <div>
+                                    <span><strong>@s.Year @s.Model</strong> <span class="text-muted">(@s.Color)</span></span>
+                                    @* Show price totals inline always *@
+                                    @{
+                                        var slingshotAccessoriesForTotals = GetAccessoriesForSlingshot(s.Id);
+                                        if (slingshotAccessoriesForTotals.Any())
+                                        {
+                                            var ownedTotal = slingshotAccessoriesForTotals.Where(a => !a.IsWishlist).Sum(a => a.Price * (a.SlinghotQuantities?.GetValueOrDefault(s.Id, 0) ?? 0));
+                                            var wishlistTotal = slingshotAccessoriesForTotals.Where(a => a.IsWishlist).Sum(a => a.Price * (a.SlinghotQuantities?.GetValueOrDefault(s.Id, 0) ?? 0));
+                                            var grandTotal = ownedTotal + wishlistTotal;
+                                            
+                                            <div class="mt-1">
+                                                <small class="text-muted">
+                                                    <span class="me-2">
+                                                        <span class="bi bi-check-circle text-primary me-1"></span>
+                                                        <strong class="text-primary">@ownedTotal.ToString("C")</strong>
+                                                    </span>
+                                                    <span class="me-2">
+                                                        <span class="bi bi-star-fill text-warning me-1"></span>
+                                                        <strong class="text-warning">@wishlistTotal.ToString("C")</strong>
+                                                    </span>
+                                                    <span>
+                                                        <span class="bi bi-wallet2 text-success me-1"></span>
+                                                        <strong class="text-success">@grandTotal.ToString("C")</strong>
+                                                    </span>
+                                                </small>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </div>
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-outline-info" @onclick="() => ToggleAccessories(s.Id)">
-                                    <span class="bi bi-@(expandedSlingshots.Contains(s.Id) ? "eye-slash" : "eye") me-1"></span>
-                                    @(expandedSlingshots.Contains(s.Id) ? "Hide" : "Show") Accessories
+                                    <span class="bi bi-@(expandedAccessories.Contains(s.Id) ? "eye-slash" : "eye") me-1"></span>
+                                    @(expandedAccessories.Contains(s.Id) ? "Hide" : "Show") Accessories
                                 </button>
                                 <button class="btn btn-outline-secondary" @onclick="() => BeginEdit(s)">Edit</button>
                                 @if (confirmDeleteId == s.Id)
@@ -82,33 +111,43 @@ else
                         </div>
 
                         @* Show accessories for this slingshot with quantities *@
-                        @if (expandedSlingshots.Contains(s.Id))
+                        @if (expandedAccessories.Contains(s.Id))
                         {
                             var slingshotAccessories = GetAccessoriesForSlingshot(s.Id);
-                            @if (slingshotAccessories.Any())
-                            {
-                                <div class="mt-2 ms-4">
-                                    <h6 class="text-muted">Associated Accessories:</h6>
-                                    <ul class="list-unstyled">
-                                        @foreach (var acc in slingshotAccessories)
-                                        {
-                                            var quantity = acc.SlinghotQuantities?.GetValueOrDefault(s.Id, 0) ?? 0;
-                                            <li class="mb-1">
-                                                <span class="bi bi-tag me-1"></span>@acc.Title
-                                                <span class="text-muted small">(@acc.CategoryName)</span>
-                                                @if (quantity > 0)
-                                                {
-                                                    <span class="badge bg-primary ms-2">Qty: @quantity</span>
-                                                }
-                                            </li>
-                                        }
-                                    </ul>
+                            <div class="mt-2 ms-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="text-muted mb-0">Associated Accessories:</h6>
+                                    <button class="btn btn-sm btn-success" @onclick="() => ShowAddAccessoriesModal(s.Id)">
+                                        <span class="bi bi-plus-circle me-1"></span>Add Accessories
+                                    </button>
                                 </div>
-                            }
-                            else
-                            {
-                                <p class="text-muted ms-4 mt-2 mb-0 small">No accessories associated with this slingshot yet.</p>
-                            }
+                                @if (slingshotAccessories.Any())
+                                {
+                                    @* Group by Owned vs Wishlist first *@
+                                    var ownedAccessories = slingshotAccessories.Where(a => !a.IsWishlist).ToList();
+                                    var wishlistAccessories = slingshotAccessories.Where(a => a.IsWishlist).ToList();
+                                    
+                                    @if (ownedAccessories.Any())
+                                    {
+                                        <h6 class="text-muted small mb-2 mt-2">
+                                            <span class="bi bi-check-circle me-1"></span>Owned Accessories
+                                        </h6>
+                                        @RenderAccessoryHierarchy(s.Id, ownedAccessories)
+                                    }
+                                    
+                                    @if (wishlistAccessories.Any())
+                                    {
+                                        <h6 class="text-muted small mb-2 mt-3">
+                                            <span class="bi bi-star-fill text-warning me-1"></span>Wishlist Items
+                                        </h6>
+                                        @RenderAccessoryHierarchy(s.Id, wishlistAccessories)
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted mt-2 mb-0 small">No accessories associated with this slingshot yet.</p>
+                                }
+                            </div>
                         }
                     }
                 </li>
@@ -166,10 +205,140 @@ else
     </div>
 }
 
+@* Add Accessories Modal *@
+@if (showAddAccessoriesModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Accessories to Slingshot</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelAddAccessories"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(addAccessoriesError))
+                    {
+                        <div class="alert alert-danger" role="alert">@addAccessoriesError</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Select Accessories & Quantities</label>
+                        <div class="border rounded p-2" style="max-height: 400px; overflow-y: auto;">
+                            @if (GetUnassignedAccessories(selectedSlingshotId).Any())
+                            {
+                                @foreach (var acc in GetUnassignedAccessories(selectedSlingshotId))
+                                {
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-7">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="add_acc_@acc.Id" 
+                                                       checked="@(selectedAccessories.ContainsKey(acc.Id))"
+                                                       @onchange="@(e => ToggleAccessorySelection(acc.Id, (bool)e.Value!))" />
+                                                <label class="form-check-label" for="add_acc_@acc.Id">
+                                                    @if (acc.IsWishlist)
+                                                    {
+                                                        <span class="bi bi-star-fill text-warning me-1"></span>
+                                                    }
+                                                    <strong>@acc.Title</strong>
+                                                    <span class="text-muted small d-block">
+                                                        @acc.CategoryName
+                                                        @if (acc.IsWishlist)
+                                                        {
+                                                            <span class="badge bg-warning text-dark ms-1">Wishlist</span>
+                                                        }
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-5">
+                                            @if (selectedAccessories.ContainsKey(acc.Id))
+                                            {
+                                                <input type="number" 
+                                                       class="form-control form-control-sm" 
+                                                       min="1" 
+                                                       value="@selectedAccessories[acc.Id]"
+                                                       @oninput="@(e => UpdateSelectedQuantity(acc.Id, e.Value?.ToString()))"
+                                                       placeholder="Qty" />
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0 small">All accessories are already assigned to this slingshot.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @onclick="CancelAddAccessories" disabled="@addingAccessories">Cancel</button>
+                    <button class="btn btn-primary btn-sm"
+                            @onclick="AddAccessoriesAsync"
+                            disabled="@(addingAccessories || !selectedAccessories.Any())">
+                        @if (addingAccessories)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Add Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Edit Quantity Modal *@
+@if (showEditQuantityModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Quantity</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelEditQuantity"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(editQuantityError))
+                    {
+                        <div class="alert alert-danger py-1 px-2 mb-2" role="alert">@editQuantityError</div>
+                    }
+                    <div class="mb-2">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" 
+                               class="form-control form-control-sm" 
+                               min="1" 
+                               @bind="editQuantityValue"
+                               placeholder="Enter quantity" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @onclick="CancelEditQuantity" disabled="@updatingQuantity">Cancel</button>
+                    <button class="btn btn-primary btn-sm"
+                            @onclick="UpdateQuantityAsync"
+                            disabled="@(updatingQuantity || editQuantityValue < 1)">
+                        @if (updatingQuantity)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Update
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<SlinghotDto> slingshots = [];
     private List<AccessoryInfoDto> accessories = [];
-    private HashSet<int> expandedSlingshots = new();
+    private HashSet<int> expandedAccessories = new();
+    private HashSet<string> expandedCategories = new(); // Format: "slingshotId_categoryId"
+    private HashSet<string> expandedSubcategories = new(); // Format: "slingshotId_categoryId_subcategoryId"
+    private bool allExpanded = true;
     private bool isLoading = true;
     private string? errorMessage;
 
@@ -183,6 +352,25 @@ else
     private CreateSlinghotModel createModel = new();
     private bool savingCreate;
     private string? createError;
+
+    // Add accessories modal state
+    private bool showAddAccessoriesModal;
+    private int selectedSlingshotId;
+    private Dictionary<int, int> selectedAccessories = new();
+    private bool addingAccessories;
+    private string? addAccessoriesError;
+
+    // Edit quantity modal state
+    private bool showEditQuantityModal;
+    private int editSlingshotId;
+    private int editAccessoryId;
+    private int editQuantityValue;
+    private bool updatingQuantity;
+    private string? editQuantityError;
+
+    // Remove accessory state
+    private (int SlingshotId, int AccessoryId)? confirmRemoveAccessoryId;
+    private bool removingAccessory;
 
     protected override async Task OnInitializedAsync()
     {
@@ -228,20 +416,195 @@ else
         }
     }
 
-    private void ToggleAccessories(int slinghotId)
+    private void ToggleAccessories(int slingshotId)
     {
-        if (expandedSlingshots.Contains(slinghotId))
-            expandedSlingshots.Remove(slinghotId);
+        if (expandedAccessories.Contains(slingshotId))
+            expandedAccessories.Remove(slingshotId);
         else
-            expandedSlingshots.Add(slinghotId);
+            expandedAccessories.Add(slingshotId);
     }
 
-    private List<AccessoryInfoDto> GetAccessoriesForSlingshot(int slinghotId)
+    private void ToggleExpandAll()
+    {
+        if (allExpanded)
+        {
+            // Collapse all accessories and hierarchies
+            expandedAccessories.Clear();
+            expandedCategories.Clear();
+            expandedSubcategories.Clear();
+            allExpanded = false;
+        }
+        else
+        {
+            // Expand all accessories and hierarchies
+            expandedCategories.Clear();
+            expandedSubcategories.Clear();
+            allExpanded = true;
+        }
+    }
+
+    private void ToggleCategory(int slingshotId, int categoryId)
+    {
+        var key = $"{slingshotId}_{categoryId}";
+        if (expandedCategories.Contains(key))
+            expandedCategories.Remove(key);
+        else
+            expandedCategories.Add(key);
+    }
+
+    private void ToggleSubcategory(int slingshotId, int categoryId, int? subcategoryId)
+    {
+        if (subcategoryId == null) return;
+        var key = $"{slingshotId}_{categoryId}_{subcategoryId}";
+        if (expandedSubcategories.Contains(key))
+            expandedSubcategories.Remove(key);
+        else
+            expandedSubcategories.Add(key);
+    }
+
+    private List<AccessoryInfoDto> GetAccessoriesForSlingshot(int slingshotId)
     {
         return accessories
-            .Where(a => a.SlinghotIds != null && a.SlinghotIds.Contains(slinghotId))
+            .Where(a => a.SlinghotIds != null && a.SlinghotIds.Contains(slingshotId))
             .ToList();
     }
+
+    private List<AccessoryInfoDto> GetUnassignedAccessories(int slingshotId)
+    {
+        return accessories
+            .Where(a => a.SlinghotIds == null || !a.SlinghotIds.Contains(slingshotId))
+            .OrderBy(a => a.Title)
+            .ToList();
+    }
+
+    private RenderFragment RenderAccessoryHierarchy(int slingshotId, List<AccessoryInfoDto> accessoriesList) => __builder =>
+    {
+        // Group by Category
+        var categorizedAccessories = accessoriesList
+            .GroupBy(a => new { a.CategoryId, a.CategoryName })
+            .OrderBy(g => g.Key.CategoryName);
+
+        foreach (var categoryGroup in categorizedAccessories)
+        {
+            var categoryKey = $"{slingshotId}_{categoryGroup.Key.CategoryId}";
+            var isCategoryExpanded = expandedCategories.Contains(categoryKey);
+
+            <div class="mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none" 
+                            @onclick="() => ToggleCategory(slingshotId, categoryGroup.Key.CategoryId)"
+                            style="min-width: 20px;">
+                        <span class="@(isCategoryExpanded ? "bi bi-chevron-down" : "bi bi-chevron-right")"></span>
+                    </button>
+                    <strong class="text-muted small">@categoryGroup.Key.CategoryName</strong>
+                    <span class="badge bg-secondary">@categoryGroup.Count()</span>
+                </div>
+
+                @if (isCategoryExpanded)
+                {
+                    <div class="ms-3">
+                        @{
+                            // Group by Subcategory within this category
+                            var subcategoryGroups = categoryGroup
+                                .GroupBy(a => new { a.SubcategoryId, a.SubcategoryName })
+                                .OrderBy(g => g.Key.SubcategoryName ?? "");
+
+                            foreach (var subcategoryGroup in subcategoryGroups)
+                            {
+                                if (subcategoryGroup.Key.SubcategoryId.HasValue)
+                                {
+                                    // Has subcategory - render collapsible subcategory
+                                    var subcategoryKey = $"{slingshotId}_{categoryGroup.Key.CategoryId}_{subcategoryGroup.Key.SubcategoryId}";
+                                    var isSubcategoryExpanded = expandedSubcategories.Contains(subcategoryKey);
+
+                                    <div class="mb-2 mt-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <button class="btn btn-sm btn-link p-0 text-decoration-none" 
+                                                    @onclick="() => ToggleSubcategory(slingshotId, categoryGroup.Key.CategoryId, subcategoryGroup.Key.SubcategoryId)"
+                                                    style="min-width: 18px;">
+                                                <span class="@(isSubcategoryExpanded ? "bi bi-chevron-down" : "bi bi-chevron-right")"></span>
+                                            </button>
+                                            <span class="text-muted small">@subcategoryGroup.Key.SubcategoryName</span>
+                                            <span class="badge bg-light text-dark">@subcategoryGroup.Count()</span>
+                                        </div>
+
+                                        @if (isSubcategoryExpanded)
+                                        {
+                                            <ul class="list-unstyled ms-3 mt-1">
+                                                @foreach (var acc in subcategoryGroup.OrderBy(a => a.Title))
+                                                {
+                                                    @RenderAccessoryItem(slingshotId, acc)
+                                                }
+                                            </ul>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    // No subcategory - render accessories directly
+                                    <ul class="list-unstyled mt-1">
+                                        @foreach (var acc in subcategoryGroup.OrderBy(a => a.Title))
+                                        {
+                                            @RenderAccessoryItem(slingshotId, acc)
+                                        }
+                                    </ul>
+                                }
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        }
+    };
+
+    private RenderFragment RenderAccessoryItem(int slingshotId, AccessoryInfoDto acc) => __builder =>
+    {
+        var quantity = acc.SlinghotQuantities?.GetValueOrDefault(slingshotId, 0) ?? 0;
+        var lineTotal = acc.Price * quantity;
+        
+        <li class="mb-1 d-flex justify-content-between align-items-center border rounded p-2">
+            <span>
+                <span class="bi bi-tag me-1"></span>@acc.Title
+                @if (quantity > 0)
+                {
+                    <span class="badge @(acc.IsWishlist ? "bg-warning text-dark" : "bg-primary") ms-2">Qty: @quantity</span>
+                }
+                <br />
+                <small class="text-muted ms-4">
+                    @acc.Price.ToString("C") × @quantity = <strong>@lineTotal.ToString("C")</strong>
+                </small>
+            </span>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary btn-sm" 
+                        @onclick="() => ShowEditQuantityModal(slingshotId, acc.Id, quantity)"
+                        title="Edit Quantity">
+                    <span class="bi bi-pencil"></span>
+                </button>
+                @if (confirmRemoveAccessoryId == (slingshotId, acc.Id))
+                {
+                    <button class="btn btn-danger btn-sm" 
+                            disabled="@removingAccessory" 
+                            @onclick="() => RemoveAccessoryAsync(slingshotId, acc.Id)">
+                        Confirm
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            disabled="@removingAccessory" 
+                            @onclick="() => confirmRemoveAccessoryId = null">
+                        Cancel
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-outline-danger btn-sm" 
+                            disabled="@removingAccessory" 
+                            @onclick="() => confirmRemoveAccessoryId = (slingshotId, acc.Id)"
+                            title="Remove">
+                        <span class="bi bi-trash"></span>
+                    </button>
+                }
+            </div>
+        </li>
+    };
 
     private async Task Reload()
     {
@@ -313,6 +676,7 @@ else
             {
                 slingshots.RemoveAll(s => s.Id == id);
                 if (editingId == id) CancelEdit();
+                expandedAccessories.Remove(id);
             }
             else
             {
@@ -406,6 +770,217 @@ else
         if (e.Key == "Escape") CancelCreate();
     }
 
+    /* Add Accessories to Slingshot */
+    private void ShowAddAccessoriesModal(int slingshotId)
+    {
+        selectedSlingshotId = slingshotId;
+        selectedAccessories.Clear();
+        addAccessoriesError = null;
+        showAddAccessoriesModal = true;
+    }
+
+    private void CancelAddAccessories()
+    {
+        if (addingAccessories) return;
+        showAddAccessoriesModal = false;
+        selectedAccessories.Clear();
+        addAccessoriesError = null;
+    }
+
+    private void ToggleAccessorySelection(int accessoryId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!selectedAccessories.ContainsKey(accessoryId))
+            {
+                selectedAccessories[accessoryId] = 1; // Default quantity
+            }
+        }
+        else
+        {
+            selectedAccessories.Remove(accessoryId);
+        }
+    }
+
+    private void UpdateSelectedQuantity(int accessoryId, string? value)
+    {
+        if (int.TryParse(value, out int quantity) && quantity > 0)
+        {
+            selectedAccessories[accessoryId] = quantity;
+        }
+    }
+
+    private async Task AddAccessoriesAsync()
+    {
+        addingAccessories = true;
+        addAccessoriesError = null;
+
+        try
+        {
+            // For each selected accessory, we need to update it to include this slingshot
+            foreach (var (accessoryId, quantity) in selectedAccessories)
+            {
+                var accessory = accessories.FirstOrDefault(a => a.Id == accessoryId);
+                if (accessory == null) continue;
+
+                // Get the current accessory details
+                var response = await Http.GetAsync($"api/accessories/{accessoryId}");
+                if (!response.IsSuccessStatusCode) continue;
+
+                var accessoryDto = await response.Content.ReadFromJsonAsync<AccessoryUpdateDto>();
+                if (accessoryDto == null) continue;
+
+                // Add the new slingshot with quantity
+                var updatedQuantities = new Dictionary<int, int>(accessoryDto.SlinghotQuantities ?? new());
+                updatedQuantities[selectedSlingshotId] = quantity;
+
+                // Update the accessory - preserve all existing fields
+                accessoryDto.SlinghotQuantities = updatedQuantities;
+
+                var updateResponse = await Http.PutAsJsonAsync($"api/accessories/{accessoryId}", accessoryDto);
+                if (!updateResponse.IsSuccessStatusCode)
+                {
+                    var errorBody = await updateResponse.Content.ReadAsStringAsync();
+                    addAccessoriesError = $"Failed to add accessory: {errorBody}";
+                    return;
+                }
+            }
+
+            // Reload data to reflect changes
+            await LoadAsync();
+            showAddAccessoriesModal = false;
+            selectedAccessories.Clear();
+        }
+        catch (Exception ex)
+        {
+            addAccessoriesError = $"Error adding accessories: {ex.Message}";
+        }
+        finally
+        {
+            addingAccessories = false;
+        }
+    }
+
+    /* Edit Accessory Quantity */
+    private void ShowEditQuantityModal(int slingshotId, int accessoryId, int currentQuantity)
+    {
+        editSlingshotId = slingshotId;
+        editAccessoryId = accessoryId;
+        editQuantityValue = currentQuantity;
+        editQuantityError = null;
+        showEditQuantityModal = true;
+    }
+
+    private void CancelEditQuantity()
+    {
+        if (updatingQuantity) return;
+        showEditQuantityModal = false;
+        editQuantityError = null;
+    }
+
+    private async Task UpdateQuantityAsync()
+    {
+        updatingQuantity = true;
+        editQuantityError = null;
+
+        try
+        {
+            // Get the current accessory details
+            var response = await Http.GetAsync($"api/accessories/{editAccessoryId}");
+            if (!response.IsSuccessStatusCode)
+            {
+                editQuantityError = "Failed to load accessory data";
+                return;
+            }
+
+            var accessoryDto = await response.Content.ReadFromJsonAsync<AccessoryUpdateDto>();
+            if (accessoryDto == null)
+            {
+                editQuantityError = "Failed to parse accessory data";
+                return;
+            }
+
+            // Update the quantity for this slingshot
+            var updatedQuantities = new Dictionary<int, int>(accessoryDto.SlinghotQuantities ?? new());
+            updatedQuantities[editSlingshotId] = editQuantityValue;
+
+            // Update the accessory - preserve all existing fields
+            accessoryDto.SlinghotQuantities = updatedQuantities;
+
+            var updateResponse = await Http.PutAsJsonAsync($"api/accessories/{editAccessoryId}", accessoryDto);
+            if (!updateResponse.IsSuccessStatusCode)
+            {
+                var errorBody = await updateResponse.Content.ReadAsStringAsync();
+                editQuantityError = $"Failed to update quantity: {errorBody}";
+                return;
+            }
+
+            // Reload data to reflect changes
+            await LoadAsync();
+            showEditQuantityModal = false;
+        }
+        catch (Exception ex)
+        {
+            editQuantityError = $"Error updating quantity: {ex.Message}";
+        }
+        finally
+        {
+            updatingQuantity = false;
+        }
+    }
+
+    /* Remove Accessory from Slingshot */
+    private async Task RemoveAccessoryAsync(int slingshotId, int accessoryId)
+    {
+        removingAccessory = true;
+        errorMessage = null;
+
+        try
+        {
+            // Get the current accessory details
+            var response = await Http.GetAsync($"api/accessories/{accessoryId}");
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = "Failed to load accessory data";
+                return;
+            }
+
+            var accessoryDto = await response.Content.ReadFromJsonAsync<AccessoryUpdateDto>();
+            if (accessoryDto == null)
+            {
+                errorMessage = "Failed to parse accessory data";
+                return;
+            }
+
+            // Remove the slingshot from quantities
+            var updatedQuantities = new Dictionary<int, int>(accessoryDto.SlinghotQuantities ?? new());
+            updatedQuantities.Remove(slingshotId);
+
+            // Update the accessory - preserve all existing fields
+            accessoryDto.SlinghotQuantities = updatedQuantities;
+
+            var updateResponse = await Http.PutAsJsonAsync($"api/accessories/{accessoryId}", accessoryDto);
+            if (!updateResponse.IsSuccessStatusCode)
+            {
+                var errorBody = await updateResponse.Content.ReadAsStringAsync();
+                errorMessage = $"Failed to remove accessory: {errorBody}";
+                return;
+            }
+
+            // Reload data to reflect changes
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error removing accessory: {ex.Message}";
+        }
+        finally
+        {
+            removingAccessory = false;
+            confirmRemoveAccessoryId = null;
+        }
+    }
+
     public void Dispose()
     {
         UserStateService.OnUserChanged -= HandleUserChanged;
@@ -417,10 +992,22 @@ else
     private sealed record AccessoryInfoDto(
         int Id,
         string Title,
+        string? PictureUrl,
+        decimal Price,
+        string? Url,
+        bool Wishlist,
+        int CategoryId,
+        int? SubcategoryId,
         string CategoryName,
+        string? SubcategoryName,
         List<int>? SlinghotIds,
+        List<string>? SlinghotDescriptions,
         Dictionary<int, int>? SlinghotQuantities
-    );
+    )
+    {
+        // Add a computed property for easier access
+        public bool IsWishlist => Wishlist;
+    };
 
     private sealed class SlinghotEditModel
     {
@@ -443,5 +1030,22 @@ else
         public string Model { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
         public string UserId { get; set; } = string.Empty;
+    }
+
+    private sealed class AccessoryUpdateDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? PictureUrl { get; set; }
+        public decimal Price { get; set; }
+        public string? Url { get; set; }
+        public bool Wishlist { get; set; }
+        public int CategoryId { get; set; }
+        public int? SubcategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string? SubcategoryName { get; set; }
+        public List<int>? SlinghotIds { get; set; }
+        public List<string>? SlinghotDescriptions { get; set; }
+        public Dictionary<int, int>? SlinghotQuantities { get; set; } = new();
     }
 }
