@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             x:Class="Slingcessories.Mobile.Maui.Pages.SlingshotsPage"
+             x:DataType="viewmodels:SlingshotsViewModel"
+             Title="Slingshots">
+
+    <Grid>
+        <CollectionView ItemsSource="{Binding Slingshots}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="10">
+                        <Frame BackgroundColor="White" 
+                               HasShadow="True" 
+                               Padding="15">
+                            <VerticalStackLayout>
+                                <Label FontSize="18" 
+                                       FontAttributes="Bold">
+                                    <Label.Text>
+                                        <MultiBinding StringFormat="{}{0} {1} ({2})">
+                                            <Binding Path="Year" />
+                                            <Binding Path="Model" />
+                                            <Binding Path="Color" />
+                                        </MultiBinding>
+                                    </Label.Text>
+                                </Label>
+                            </VerticalStackLayout>
+                        </Frame>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                          IsVisible="{Binding IsLoading}" 
+                          VerticalOptions="Center" 
+                          HorizontalOptions="Center" />
+
+        <Label Text="{Binding ErrorMessage}" 
+               IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}" 
+               TextColor="Red" 
+               HorizontalOptions="Center" 
+               VerticalOptions="Center"
+               Margin="20" />
+    </Grid>
+</ContentPage>
+

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="Slingcessories.Mobile.Maui.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:Slingcessories.Mobile.Maui"
+    xmlns:pages="clr-namespace:Slingcessories.Mobile.Maui.Pages"
+    Title="Slingcessories">
+
+    <ShellContent
+        Title="Home"
+        ContentTemplate="{DataTemplate local:MainPage}"
+        Route="MainPage" />
+
+    <ShellContent
+        Title="Accessories"
+        ContentTemplate="{DataTemplate pages:AccessoriesPage}"
+        Route="AccessoriesPage" />
+
+    <ShellContent
+        Title="Categories"
+        ContentTemplate="{DataTemplate pages:CategoriesPage}"
+        Route="CategoriesPage" />
+
+    <ShellContent
+        Title="Slingshots"
+        ContentTemplate="{DataTemplate pages:SlingshotsPage}"
+        Route="SlingshotsPage" />
+
+    <ShellContent
+        Title="Users"
+        ContentTemplate="{DataTemplate pages:UsersPage}"
+        Route="UsersPage" />
+
+</Shell>

@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             x:Class="Slingcessories.Mobile.Maui.MainPage"
+             x:DataType="viewmodels:MainPageViewModel"
+             Title="Slingcessories">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <HorizontalStackLayout Grid.Row="0" 
+                                Spacing="10" 
+                                Padding="10">
+            <Button Text="Accessories" 
+                    Command="{Binding NavigateToAccessoriesCommand}" 
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Categories" 
+                    Command="{Binding NavigateToCategoriesCommand}" 
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Slingshots" 
+                    Command="{Binding NavigateToSlingshotsCommand}" 
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Users" 
+                    Command="{Binding NavigateToUsersCommand}" 
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <Label Grid.Row="1" 
+               Text="Welcome to Slingcessories" 
+               FontSize="24" 
+               HorizontalOptions="Center" 
+               VerticalOptions="Center" />
+    </Grid>
+</ContentPage>

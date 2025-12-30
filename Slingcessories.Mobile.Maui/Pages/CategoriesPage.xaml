@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             x:Class="Slingcessories.Mobile.Maui.Pages.CategoriesPage"
+             x:DataType="viewmodels:CategoriesViewModel"
+             Title="Categories">
+
+    <Grid>
+        <CollectionView ItemsSource="{Binding Categories}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="10">
+                        <Frame BackgroundColor="White" 
+                               HasShadow="True" 
+                               Padding="15">
+                            <Label Text="{Binding Name}" 
+                                   FontSize="18" />
+                        </Frame>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                          IsVisible="{Binding IsLoading}" 
+                          VerticalOptions="Center" 
+                          HorizontalOptions="Center" />
+
+        <Label Text="{Binding ErrorMessage}" 
+               IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}" 
+               TextColor="Red" 
+               HorizontalOptions="Center" 
+               VerticalOptions="Center"
+               Margin="20" />
+    </Grid>
+</ContentPage>
+
