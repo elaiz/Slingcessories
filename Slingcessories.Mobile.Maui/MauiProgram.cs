@@ -35,9 +35,15 @@ public static class MauiProgram
 			builder.Configuration.AddConfiguration(config);
 		}
 
-		// Get API base URL from configuration
+		// Get API base URL from configuration - use Android-specific URL on Android
 		var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] 
 			?? "https://localhost:7289/api/";
+
+#if ANDROID
+		// Android emulator uses 10.0.2.2 to reach the host machine
+		apiBaseUrl = builder.Configuration["ApiSettings:AndroidBaseUrl"] 
+			?? "https://10.0.2.2:7289/api/";
+#endif
 
 		// Register UserStateService as singleton (shared across app)
 		builder.Services.AddSingleton<UserStateService>();
@@ -54,7 +60,9 @@ public static class MauiProgram
 				// Bypass SSL certificate validation for localhost in development
 				handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
 				{
-					if (message.RequestUri?.Host == "localhost" || message.RequestUri?.Host == "127.0.0.1")
+					if (message.RequestUri?.Host == "localhost" 
+						|| message.RequestUri?.Host == "127.0.0.1"
+						|| message.RequestUri?.Host == "10.0.2.2")
 						return true;
 					return errors == SslPolicyErrors.None;
 				};
