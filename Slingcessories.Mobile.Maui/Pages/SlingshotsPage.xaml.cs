@@ -4,19 +4,18 @@ namespace Slingcessories.Mobile.Maui.Pages;
 
 public partial class SlingshotsPage : ContentPage
 {
+    private readonly SlingshotsViewModel _viewModel;
+
     public SlingshotsPage(SlingshotsViewModel viewModel)
     {
         InitializeComponent();
+        _viewModel = viewModel;
         BindingContext = viewModel;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (BindingContext is SlingshotsViewModel vm)
-        {
-            await vm.LoadSlingshotsCommand.ExecuteAsync(null);
-        }
+        await _viewModel.LoadSlingshotsCommand.ExecuteAsync(null);
     }
 }
-

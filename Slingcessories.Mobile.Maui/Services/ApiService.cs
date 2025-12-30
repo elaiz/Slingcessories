@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Slingcessories.Mobile.Maui.Models;
+using System.Diagnostics;
 
 namespace Slingcessories.Mobile.Maui.Services;
 
@@ -10,215 +11,148 @@ public class ApiService
     public ApiService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        // BaseAddress should be configured in MauiProgram.cs
-        // For Android emulator, use: http://10.0.2.2:5001
-        // For iOS simulator, use: http://localhost:5001
-        // For physical device, use your computer's IP address
-        
-        if (_httpClient.BaseAddress == null)
-        {
-            throw new InvalidOperationException("HttpClient BaseAddress must be configured in MauiProgram.cs");
-        }
-    }
-
-    // Accessories
-    public async Task<List<AccessoryDto>> GetAccessoriesAsync(bool? wishlist = null)
-    {
-        var url = wishlist.HasValue 
-            ? $"/Accessories?wishlist={wishlist.Value}" 
-            : "/Accessories";
-        
-        var response = await _httpClient.GetFromJsonAsync<List<AccessoryDto>>(url);
-        return response ?? new List<AccessoryDto>();
-    }
-
-    public async Task<AccessoryDto?> GetAccessoryByIdAsync(int id)
-    {
-        return await _httpClient.GetFromJsonAsync<AccessoryDto>($"/Accessories/{id}");
-    }
-
-    public async Task<AccessoryDto> CreateAccessoryAsync(CreateAccessoryDto dto)
-    {
-        var response = await _httpClient.PostAsJsonAsync("/Accessories", dto);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<AccessoryDto>() 
-            ?? throw new Exception("Failed to create accessory");
-    }
-
-    public async Task UpdateAccessoryAsync(int id, AccessoryDto dto)
-    {
-        var response = await _httpClient.PutAsJsonAsync($"/Accessories/{id}", dto);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task DeleteAccessoryAsync(int id)
-    {
-        var response = await _httpClient.DeleteAsync($"/Accessories/{id}");
-        response.EnsureSuccessStatusCode();
-    }
-
-    // Categories
-    public async Task<List<CategoryDto>> GetCategoriesAsync()
-    {
-        var response = await _httpClient.GetFromJsonAsync<List<CategoryDto>>("/Categories");
-        return response ?? new List<CategoryDto>();
-    }
-
-    public async Task<CategoryDto?> GetCategoryByIdAsync(int id)
-    {
-        return await _httpClient.GetFromJsonAsync<CategoryDto>($"/Categories/{id}");
-    }
-
-    public async Task<CategoryDto> CreateCategoryAsync(CreateCategoryDto dto)
-    {
-        var response = await _httpClient.PostAsJsonAsync("/Categories", dto);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<CategoryDto>() 
-            ?? throw new Exception("Failed to create category");
-    }
-
-    public async Task UpdateCategoryAsync(int id, CategoryDto dto)
-    {
-        var response = await _httpClient.PutAsJsonAsync($"/Categories/{id}", dto);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task DeleteCategoryAsync(int id)
-    {
-        var response = await _httpClient.DeleteAsync($"/Categories/{id}");
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task<List<SubcategoryDto>> GetSubcategoriesByCategoryAsync(int categoryId)
-    {
-        var response = await _httpClient.GetFromJsonAsync<List<SubcategoryDto>>($"/Categories/{categoryId}/subcategories");
-        return response ?? new List<SubcategoryDto>();
-    }
-
-    // Subcategories
-    public async Task<List<SubcategoryDto>> GetSubcategoriesAsync()
-    {
-        var response = await _httpClient.GetFromJsonAsync<List<SubcategoryDto>>("/Subcategories");
-        return response ?? new List<SubcategoryDto>();
-    }
-
-    public async Task<List<SubcategoryDto>> GetSubcategoriesByCategoryIdAsync(int categoryId)
-    {
-        var response = await _httpClient.GetFromJsonAsync<List<SubcategoryDto>>($"/Subcategories/by-category/{categoryId}");
-        return response ?? new List<SubcategoryDto>();
-    }
-
-    public async Task<SubcategoryDto> CreateSubcategoryAsync(CreateSubcategoryDto dto)
-    {
-        var response = await _httpClient.PostAsJsonAsync("/Subcategories", dto);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<SubcategoryDto>() 
-            ?? throw new Exception("Failed to create subcategory");
-    }
-
-    public async Task UpdateSubcategoryAsync(int id, SubcategoryDto dto)
-    {
-        var response = await _httpClient.PutAsJsonAsync($"/Subcategories/{id}", dto);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task DeleteSubcategoryAsync(int id)
-    {
-        var response = await _httpClient.DeleteAsync($"/Subcategories/{id}");
-        response.EnsureSuccessStatusCode();
-    }
-
-    // Slingshots
-    public async Task<List<SlinghotDto>> GetSlingshotsAsync(string? userId = null)
-    {
-        var url = !string.IsNullOrEmpty(userId) 
-            ? $"/Slingshots?userId={userId}" 
-            : "/Slingshots";
-        
-        var response = await _httpClient.GetFromJsonAsync<List<SlinghotDto>>(url);
-        return response ?? new List<SlinghotDto>();
-    }
-
-    public async Task<SlinghotDto?> GetSlingshotByIdAsync(int id)
-    {
-        return await _httpClient.GetFromJsonAsync<SlinghotDto>($"/Slingshots/{id}");
-    }
-
-    public async Task<SlinghotDto> CreateSlingshotAsync(CreateSlingshotDto dto)
-    {
-        var response = await _httpClient.PostAsJsonAsync("/Slingshots", dto);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<SlinghotDto>() 
-            ?? throw new Exception("Failed to create slingshot");
-    }
-
-    public async Task UpdateSlingshotAsync(int id, SlinghotDto dto)
-    {
-        var response = await _httpClient.PutAsJsonAsync($"/Slingshots/{id}", dto);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task DeleteSlingshotAsync(int id)
-    {
-        var response = await _httpClient.DeleteAsync($"/Slingshots/{id}");
-        response.EnsureSuccessStatusCode();
+        Debug.WriteLine($"ApiService created with BaseAddress: {_httpClient.BaseAddress}");
     }
 
     // Users
     public async Task<List<UserDto>> GetUsersAsync()
     {
-        try
-        {
-            // Use relative path without leading slash when BaseAddress ends with /
-            var httpResponse = await _httpClient.GetAsync("Users");
-            var requestUri = _httpClient.BaseAddress != null 
-                ? new Uri(_httpClient.BaseAddress, "Users").ToString()
-                : "Users";
-            
-            if (!httpResponse.IsSuccessStatusCode)
-            {
-                var errorContent = await httpResponse.Content.ReadAsStringAsync();
-                throw new HttpRequestException(
-                    $"Request to {requestUri} failed with status {httpResponse.StatusCode} ({httpResponse.ReasonPhrase}). Response: {errorContent}");
-            }
-            
-            var response = await httpResponse.Content.ReadFromJsonAsync<List<UserDto>>();
-            return response ?? new List<UserDto>();
-        }
-        catch (HttpRequestException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            var baseUrl = _httpClient.BaseAddress?.ToString() ?? "unknown";
-            throw new HttpRequestException($"Failed to get users from {baseUrl}Users: {ex.Message}", ex);
-        }
+        var result = await _httpClient.GetFromJsonAsync<List<UserDto>>("users");
+        return result ?? new List<UserDto>();
     }
 
     public async Task<UserDto?> GetUserByIdAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<UserDto>($"/Users/{id}");
+        return await _httpClient.GetFromJsonAsync<UserDto>($"users/{id}");
     }
 
-    public async Task<UserDto> RegisterUserAsync(CreateUserDto dto)
+    public async Task<UserDto?> CreateUserAsync(CreateUserDto dto)
     {
-        var response = await _httpClient.PostAsJsonAsync("/Users/register", dto);
+        var response = await _httpClient.PostAsJsonAsync("users", dto);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<UserDto>() 
-            ?? throw new Exception("Failed to register user");
+        return await response.Content.ReadFromJsonAsync<UserDto>();
     }
 
-    public async Task UpdateUserAsync(string id, UserDto dto)
+    // Categories
+    public async Task<List<CategoryDto>> GetCategoriesAsync()
     {
-        var response = await _httpClient.PutAsJsonAsync($"/Users/{id}", dto);
-        response.EnsureSuccessStatusCode();
+        var result = await _httpClient.GetFromJsonAsync<List<CategoryDto>>("categories");
+        return result ?? new List<CategoryDto>();
     }
 
-    public async Task DeleteUserAsync(string id)
+    // Get ALL subcategories at once (Blazor approach - more efficient)
+    public async Task<List<SubcategoryDto>> GetAllSubcategoriesAsync()
     {
-        var response = await _httpClient.DeleteAsync($"/Users/{id}");
+        Debug.WriteLine("=== GetAllSubcategoriesAsync ===");
+        Debug.WriteLine($"URL: subcategories");
+        
+        try
+        {
+            var result = await _httpClient.GetFromJsonAsync<List<SubcategoryDto>>("subcategories");
+            Debug.WriteLine($"Received {result?.Count ?? 0} subcategories");
+            return result ?? new List<SubcategoryDto>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Exception in GetAllSubcategoriesAsync: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<List<SubcategoryDto>> GetSubcategoriesAsync(int categoryId)
+    {
+        var url = $"categories/{categoryId}/subcategories";
+        Debug.WriteLine($"=== GetSubcategoriesAsync ===");
+        Debug.WriteLine($"Category ID: {categoryId}");
+        Debug.WriteLine($"Relative URL: {url}");
+        Debug.WriteLine($"Full URL: {_httpClient.BaseAddress}{url}");
+        
+        try
+        {
+            var response = await _httpClient.GetAsync(url);
+            Debug.WriteLine($"Response Status: {response.StatusCode}");
+            Debug.WriteLine($"Response Success: {response.IsSuccessStatusCode}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"Error Response: {errorContent}");
+                return new List<SubcategoryDto>();
+            }
+            
+            var contentString = await response.Content.ReadAsStringAsync();
+            Debug.WriteLine($"Response Content Length: {contentString.Length}");
+            Debug.WriteLine($"Response Content: {contentString}");
+            
+            var result = await response.Content.ReadFromJsonAsync<List<SubcategoryDto>>();
+            Debug.WriteLine($"Deserialized {result?.Count ?? 0} subcategories");
+            
+            return result ?? new List<SubcategoryDto>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Exception in GetSubcategoriesAsync: {ex.Message}");
+            Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            throw;
+        }
+    }
+
+    // Slingshots
+    public async Task<List<SlinghotDto>> GetSlingshotsAsync(string? userId = null)
+    {
+        var url = string.IsNullOrEmpty(userId) ? "slingshots" : $"slingshots?userId={Uri.EscapeDataString(userId)}";
+        var result = await _httpClient.GetFromJsonAsync<List<SlinghotDto>>(url);
+        return result ?? new List<SlinghotDto>();
+    }
+
+    public async Task<SlinghotDto?> CreateSlingshotAsync(CreateSlingshotDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("slingshots", dto);
         response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SlinghotDto>();
+    }
+
+    public async Task<bool> UpdateSlingshotAsync(int id, SlinghotDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"slingshots/{id}", dto);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteSlingshotAsync(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"slingshots/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
+    // Accessories
+    public async Task<List<AccessoryDto>> GetAccessoriesAsync(bool? wishlist = null)
+    {
+        var url = wishlist.HasValue ? $"accessories?wishlist={wishlist.Value.ToString().ToLower()}" : "accessories";
+        var result = await _httpClient.GetFromJsonAsync<List<AccessoryDto>>(url);
+        return result ?? new List<AccessoryDto>();
+    }
+
+    public async Task<AccessoryDto?> GetAccessoryByIdAsync(int id)
+    {
+        return await _httpClient.GetFromJsonAsync<AccessoryDto>($"accessories/{id}");
+    }
+
+    public async Task<AccessoryDto?> CreateAccessoryAsync(CreateAccessoryDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("accessories", dto);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AccessoryDto>();
+    }
+
+    public async Task<bool> UpdateAccessoryAsync(int id, AccessoryDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"accessories/{id}", dto);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteAccessoryAsync(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"accessories/{id}");
+        return response.IsSuccessStatusCode;
     }
 }
-

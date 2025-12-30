@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             xmlns:models="clr-namespace:Slingcessories.Mobile.Maui.Models"
+             x:Class="Slingcessories.Mobile.Maui.Pages.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="Settings">
+
+    <ScrollView Padding="16">
+        <VerticalStackLayout Spacing="16">
+
+            <Frame Padding="12" CornerRadius="8" BorderColor="Gray">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Current User" FontSize="16" FontAttributes="Bold" />
+                    <Label FontSize="14">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding CurrentUser}" Value="{x:Null}">
+                                <Setter Property="Text" Value="No user selected" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                        <Label.Text>
+                            <MultiBinding StringFormat="{}{0} {1}">
+                                <Binding Path="CurrentUser.FirstName" />
+                                <Binding Path="CurrentUser.LastName" />
+                            </MultiBinding>
+                        </Label.Text>
+                    </Label>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame Padding="12" CornerRadius="8" BorderColor="Gray">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Create New User" FontSize="16" FontAttributes="Bold" />
+                    <Entry Placeholder="First Name" Text="{Binding NewFirstName}" />
+                    <Entry Placeholder="Last Name" Text="{Binding NewLastName}" />
+                    <Entry Placeholder="Email (optional)" Text="{Binding NewEmail}" Keyboard="Email" />
+                    <Button Text="Create User" Command="{Binding CreateUserCommand}" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame Padding="12" CornerRadius="8" BorderColor="Gray">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Select User" FontSize="16" FontAttributes="Bold" />
+                    <Button Text="Refresh Users" Command="{Binding LoadUsersCommand}" />
+                    <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" HorizontalOptions="Center" />
+                    <Label Text="{Binding ErrorMessage}" 
+                           IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                           TextColor="Red" 
+                           FontSize="14" />
+
+                    <CollectionView ItemsSource="{Binding Users}" SelectionMode="None" IsVisible="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:UserDto">
+                                <Frame Margin="0,4,0,4" 
+                                       Padding="16" 
+                                       CornerRadius="8" 
+                                       HasShadow="True"
+                                       BorderColor="Gray">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, Path=SelectUserCommand}" CommandParameter="{Binding .}" />
+                                    </Frame.GestureRecognizers>
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label FontSize="18" FontAttributes="Bold">
+                                            <Label.Text>
+                                                <MultiBinding StringFormat="{}{0} {1}">
+                                                    <Binding Path="FirstName" />
+                                                    <Binding Path="LastName" />
+                                                </MultiBinding>
+                                            </Label.Text>
+                                        </Label>
+                                        <Label Text="{Binding Email}" FontSize="14" />
+                                    </VerticalStackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <ContentView>
+                                <Label Text="No users found. Create one above!" HorizontalOptions="Center" FontSize="16" Margin="0,16,0,0" />
+                            </ContentView>
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

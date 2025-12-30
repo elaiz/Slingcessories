@@ -4,19 +4,18 @@ namespace Slingcessories.Mobile.Maui.Pages;
 
 public partial class AccessoriesPage : ContentPage
 {
+    private readonly AccessoriesViewModel _viewModel;
+
     public AccessoriesPage(AccessoriesViewModel viewModel)
     {
         InitializeComponent();
+        _viewModel = viewModel;
         BindingContext = viewModel;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (BindingContext is AccessoriesViewModel vm)
-        {
-            await vm.LoadAccessoriesCommand.ExecuteAsync(null);
-        }
+        await _viewModel.LoadAccessoriesCommand.ExecuteAsync(null);
     }
 }
-

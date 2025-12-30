@@ -1,38 +1,157 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:viewmodels="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             xmlns:vm="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             xmlns:models="clr-namespace:Slingcessories.Mobile.Maui.Models"
              x:Class="Slingcessories.Mobile.Maui.Pages.CategoriesPage"
-             x:DataType="viewmodels:CategoriesViewModel"
+             x:DataType="vm:CategoriesViewModel"
              Title="Categories">
+    
+    <ScrollView Padding="16">
+        <VerticalStackLayout Spacing="16">
+            
+            <!-- Debug info -->
+            <Label Text="{Binding Categories.Count, StringFormat='Categories Count: {0}'}" 
+                   FontSize="12" 
+                   TextColor="Blue" />
+            <Label Text="{Binding IsLoading, StringFormat='IsLoading: {0}'}" 
+                   FontSize="12" 
+                   TextColor="Blue" />
+            
+            <!-- Refresh button -->
+            <Button Text="Refresh" 
+                    Command="{Binding LoadCategoriesCommand}" />
 
-    <Grid>
-        <CollectionView ItemsSource="{Binding Categories}">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Grid Padding="10">
-                        <Frame BackgroundColor="White" 
-                               HasShadow="True" 
-                               Padding="15">
-                            <Label Text="{Binding Name}" 
-                                   FontSize="18" />
-                        </Frame>
-                    </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+            <!-- Loading indicator -->
+            <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                             IsVisible="{Binding IsLoading}"
+                             HorizontalOptions="Center" />
 
-        <ActivityIndicator IsRunning="{Binding IsLoading}" 
-                          IsVisible="{Binding IsLoading}" 
-                          VerticalOptions="Center" 
-                          HorizontalOptions="Center" />
+            <!-- Error message -->
+            <Label Text="{Binding ErrorMessage}" 
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                   TextColor="Red"
+                   HorizontalOptions="Center"
+                   FontSize="14" />
 
-        <Label Text="{Binding ErrorMessage}" 
-               IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}" 
-               TextColor="Red" 
-               HorizontalOptions="Center" 
-               VerticalOptions="Center"
-               Margin="20" />
-    </Grid>
+            <!-- Categories list -->
+            <CollectionView ItemsSource="{Binding Categories}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CategoryWithSubcategories">
+                        <VerticalStackLayout Spacing="0" Margin="0,0,0,10">
+                            <!-- Category Header -->
+                            <Frame Padding="12" 
+                                   CornerRadius="8" 
+                                   HasShadow="True"
+                                   BorderColor="Gray"
+                                   Margin="0">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=ToggleCategoryCommand}" 
+                                                         CommandParameter="{Binding .}" />
+                                </Frame.GestureRecognizers>
+                                
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Expand/Collapse Icon -->
+                                    <Label Grid.Column="0"
+                                           FontFamily="Arial"
+                                           FontSize="18"
+                                           TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                                           VerticalOptions="Center"
+                                           Margin="0,0,12,0">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="True">
+                                                <Setter Property="Text" Value="▼" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="False">
+                                                <Setter Property="Text" Value="▶" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    
+                                    <!-- Category Name -->
+                                    <Label Grid.Column="1"
+                                           Text="{Binding Name}" 
+                                           FontSize="18" 
+                                           FontAttributes="Bold"
+                                           TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                                           VerticalOptions="Center" />
+                                    
+                                    <!-- Subcategory Count Badge -->
+                                    <Frame Grid.Column="2"
+                                           Padding="8,4"
+                                           CornerRadius="12"
+                                           BackgroundColor="{StaticResource Secondary}"
+                                           HasShadow="False"
+                                           VerticalOptions="Center">
+                                        <Label Text="{Binding Subcategories.Count}" 
+                                               FontSize="12"
+                                               FontAttributes="Bold"
+                                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource PrimaryDarkText}}" />
+                                    </Frame>
+                                </Grid>
+                            </Frame>
+                            
+                            <!-- Debug: Show expanded state and count -->
+                            <Label Text="{Binding IsExpanded, StringFormat='IsExpanded: {0}'}"
+                                   FontSize="10"
+                                   TextColor="Orange"
+                                   Margin="20,4,0,0" />
+                            <Label Text="{Binding Subcategories.Count, StringFormat='SubCount: {0}'}"
+                                   FontSize="10"
+                                   TextColor="Orange"
+                                   Margin="20,0,0,4" />
+                            
+                            <!-- Subcategories List (shown when expanded) -->
+                            <VerticalStackLayout IsVisible="{Binding IsExpanded}"
+                                               Padding="20,8,0,0"
+                                               Spacing="4"
+                                               BackgroundColor="LightYellow">
+                                
+                                <Label Text="Subcategories section visible!"
+                                       FontSize="12"
+                                       TextColor="Green"
+                                       Margin="0,0,0,8" />
+                                
+                                <CollectionView ItemsSource="{Binding Subcategories}">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:SubcategoryDto">
+                                            <Frame Padding="12" 
+                                                   CornerRadius="6" 
+                                                   BackgroundColor="LightBlue"
+                                                   BorderColor="Blue"
+                                                   Margin="0,0,0,4">
+                                                <Label Text="{Binding Name}" 
+                                                       FontSize="14" 
+                                                       TextColor="Black" />
+                                            </Frame>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                    
+                                    <CollectionView.EmptyView>
+                                        <ContentView>
+                                            <Label Text="(Empty: No subcategories)" 
+                                                   FontSize="12"
+                                                   TextColor="Red"
+                                                   Margin="12,4" />
+                                        </ContentView>
+                                    </CollectionView.EmptyView>
+                                </CollectionView>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+                
+                <CollectionView.EmptyView>
+                    <ContentView>
+                        <Label Text="No categories found" 
+                               HorizontalOptions="Center"
+                               FontSize="16"
+                               Margin="0,16,0,0" />
+                    </ContentView>
+                </CollectionView.EmptyView>
+            </CollectionView>
+            
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
 

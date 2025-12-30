@@ -3,33 +3,34 @@
     x:Class="Slingcessories.Mobile.Maui.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:Slingcessories.Mobile.Maui"
     xmlns:pages="clr-namespace:Slingcessories.Mobile.Maui.Pages"
-    Title="Slingcessories">
+    Title="Slingcessories"
+    FlyoutBackgroundColor="#f8f9fa">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <TabBar>
+        <ShellContent
+            Title="Accessories"
+            Icon="dotnet_bot.png"
+            ContentTemplate="{DataTemplate pages:AccessoriesPage}"
+            Route="AccessoriesPage" />
 
-    <ShellContent
-        Title="Accessories"
-        ContentTemplate="{DataTemplate pages:AccessoriesPage}"
-        Route="AccessoriesPage" />
+        <ShellContent
+            Title="Slingshots"
+            Icon="dotnet_bot.png"
+            ContentTemplate="{DataTemplate pages:SlingshotsPage}"
+            Route="SlingshotsPage" />
 
-    <ShellContent
-        Title="Categories"
-        ContentTemplate="{DataTemplate pages:CategoriesPage}"
-        Route="CategoriesPage" />
+        <ShellContent
+            Title="Categories"
+            Icon="dotnet_bot.png"
+            ContentTemplate="{DataTemplate pages:CategoriesPage}"
+            Route="CategoriesPage" />
 
-    <ShellContent
-        Title="Slingshots"
-        ContentTemplate="{DataTemplate pages:SlingshotsPage}"
-        Route="SlingshotsPage" />
-
-    <ShellContent
-        Title="Users"
-        ContentTemplate="{DataTemplate pages:UsersPage}"
-        Route="UsersPage" />
+        <ShellContent
+            Title="Settings"
+            Icon="dotnet_bot.png"
+            ContentTemplate="{DataTemplate pages:SettingsPage}"
+            Route="SettingsPage" />
+    </TabBar>
 
 </Shell>

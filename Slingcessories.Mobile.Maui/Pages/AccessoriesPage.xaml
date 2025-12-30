@@ -1,80 +1,142 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:viewmodels="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             xmlns:vm="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             xmlns:models="clr-namespace:Slingcessories.Mobile.Maui.Models"
              x:Class="Slingcessories.Mobile.Maui.Pages.AccessoriesPage"
-             x:DataType="viewmodels:AccessoriesViewModel"
+             x:DataType="vm:AccessoriesViewModel"
              Title="Accessories">
-
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <HorizontalStackLayout Grid.Row="0" 
-                                Spacing="10" 
-                                Padding="10">
-            <Button Text="All" 
-                    Command="{Binding LoadAccessoriesCommand}" 
-                    CommandParameter="{x:Null}" />
-            <Button Text="Wishlist" 
-                    Command="{Binding LoadAccessoriesCommand}" 
-                    CommandParameter="True" />
+    
+    <Grid RowDefinitions="Auto,Auto,*" Padding="16">
+        
+        <!-- Debug info -->
+        <HorizontalStackLayout Grid.Row="0" Spacing="10" Margin="0,0,0,8">
+            <Label Text="{Binding Accessories.Count, StringFormat='Count: {0}'}" 
+                   FontSize="12" 
+                   TextColor="Blue" />
+            <Label Text="{Binding IsLoading, StringFormat='Loading: {0}'}" 
+                   FontSize="12" 
+                   TextColor="Blue" />
+        </HorizontalStackLayout>
+        
+        <!-- Header with toggle -->
+        <HorizontalStackLayout Grid.Row="1" Spacing="10" Margin="0,0,0,16">
+            <Label Text="Show Wishlist:" 
+                   VerticalOptions="Center" />
+            <Switch IsToggled="{Binding IsWishlist}" />
             <Button Text="Refresh" 
                     Command="{Binding LoadAccessoriesCommand}" />
         </HorizontalStackLayout>
 
-        <CollectionView Grid.Row="1" 
-                       ItemsSource="{Binding Accessories}">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Grid Padding="10">
-                        <Frame BackgroundColor="White" 
-                               HasShadow="True" 
-                               Padding="15">
-                            <Grid ColumnDefinitions="Auto,*">
-                                <Image Source="{Binding PictureUrl}" 
-                                       WidthRequest="80" 
-                                       HeightRequest="80" 
-                                       Aspect="AspectFill" 
-                                       BackgroundColor="LightGray" />
-                                <VerticalStackLayout Grid.Column="1" 
-                                                     Spacing="5" 
-                                                     Padding="10,0,0,0">
-                                    <Label Text="{Binding Title}" 
+        <!-- Content -->
+        <Grid Grid.Row="2">
+            
+            <!-- Loading indicator -->
+            <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                             IsVisible="{Binding IsLoading}"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center" />
+
+            <!-- Error message -->
+            <Label Text="{Binding ErrorMessage}" 
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                   TextColor="Red"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center" />
+
+            <!-- Accessories list -->
+            <ScrollView>
+                <CollectionView ItemsSource="{Binding Accessories}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:AccessoryDto">
+                            <Frame Margin="0,0,0,10" 
+                                   Padding="12" 
+                                   CornerRadius="8" 
+                                   HasShadow="True"
+                                   BorderColor="Gray">
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                                    
+                                    <!-- Title -->
+                                    <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                           Text="{Binding Title}" 
                                            FontSize="18" 
                                            FontAttributes="Bold" />
-                                    <Label Text="{Binding CategoryName}" 
-                                           FontSize="14" 
-                                           TextColor="Gray" />
-                                    <Label Text="{Binding Price, StringFormat='${0:F2}'}" 
-                                           FontSize="16" 
-                                           TextColor="Green" />
-                                    <Label Text="{Binding Wishlist, StringFormat='Wishlist: {0}'}" 
-                                           FontSize="12" 
-                                           TextColor="Orange" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Frame>
-                    </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
 
-        <ActivityIndicator Grid.Row="1" 
-                          IsRunning="{Binding IsLoading}" 
-                          IsVisible="{Binding IsLoading}" 
-                          VerticalOptions="Center" 
-                          HorizontalOptions="Center" />
+                                    <!-- Price -->
+                                    <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                           Text="{Binding Price, StringFormat='Price: ${0:F2}'}"
+                                           FontSize="16"
+                                           Margin="0,4,0,0" />
 
-        <Label Grid.Row="1" 
-               Text="{Binding ErrorMessage}" 
-               IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}" 
-               TextColor="Red" 
-               HorizontalOptions="Center" 
-               VerticalOptions="Center"
-               Margin="20" />
+                                    <!-- Category and Subcategory -->
+                                    <Label Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                           FontSize="14"
+                                           Margin="0,4,0,0">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="Category: " />
+                                                <Span Text="{Binding CategoryName}" />
+                                                <Span Text="{Binding SubcategoryName, StringFormat=' - {0}'}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+
+                                    <!-- URL (if available) -->
+                                    <Label Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                                           Text="{Binding Url}"
+                                           IsVisible="{Binding Url, Converter={StaticResource IsNotNullConverter}}"
+                                           TextColor="Blue"
+                                           TextDecorations="Underline"
+                                           FontSize="12"
+                                           Margin="0,4,0,0" />
+
+                                    <!-- Slingshots (if any) -->
+                                    <Label Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+                                           IsVisible="{Binding SlinghotDescriptions, Converter={StaticResource ListHasItemsConverter}}"
+                                           FontSize="12"
+                                           Margin="0,4,0,0"
+                                           LineBreakMode="WordWrap">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="Slingshots: " />
+                                                <Span Text="{Binding SlinghotDescriptions, Converter={StaticResource ListToStringConverter}}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+
+                                    <!-- Wishlist indicator -->
+                                    <Label Grid.Row="5" Grid.Column="0"
+                                           Text="⭐ Wishlist"
+                                           IsVisible="{Binding Wishlist}"
+                                           TextColor="Orange"
+                                           FontSize="12"
+                                           Margin="0,4,0,0" />
+
+                                    <!-- Delete button -->
+                                    <Button Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2"
+                                            Text="Delete"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AccessoriesViewModel}}, Path=DeleteAccessoryCommand}"
+                                            CommandParameter="{Binding Id}"
+                                            BackgroundColor="Red"
+                                            TextColor="White"
+                                            Margin="0,8,0,0" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    
+                    <CollectionView.EmptyView>
+                        <ContentView>
+                            <Label Text="No accessories found. Toggle wishlist or refresh!" 
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   FontSize="16"
+                                   Margin="0,16,0,0" />
+                        </ContentView>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+            </ScrollView>
+        </Grid>
     </Grid>
 </ContentPage>
 

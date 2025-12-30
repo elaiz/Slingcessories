@@ -1,10 +1,9 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Slingcessories.Mobile.Maui.Services;
 using Slingcessories.Mobile.Maui.ViewModels;
 using Slingcessories.Mobile.Maui.Pages;
-using System.Net.Http;
 using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 
 namespace Slingcessories.Mobile.Maui;
 
@@ -25,10 +24,28 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
-		// Register HttpClient and Services
+		// Load configuration from appsettings.json
+		var assembly = typeof(MauiProgram).Assembly;
+		using var stream = assembly.GetManifestResourceStream("Slingcessories.Mobile.Maui.appsettings.json");
+		if (stream != null)
+		{
+			var config = new ConfigurationBuilder()
+				.AddJsonStream(stream)
+				.Build();
+			builder.Configuration.AddConfiguration(config);
+		}
+
+		// Get API base URL from configuration
+		var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] 
+			?? "https://localhost:7289/api/";
+
+		// Register UserStateService as singleton (shared across app)
+		builder.Services.AddSingleton<UserStateService>();
+
+		// Register HttpClient and ApiService
 		builder.Services.AddHttpClient<ApiService>(client =>
 		{
-			client.BaseAddress = new Uri("https://localhost:7289/api/");
+			client.BaseAddress = new Uri(apiBaseUrl);
 		})
 			.ConfigurePrimaryHttpMessageHandler(() =>
 			{
@@ -44,22 +61,18 @@ public static class MauiProgram
 #endif
 				return handler;
 			});
-		builder.Services.AddSingleton<ApiService>();
 
 		// Register ViewModels
-		builder.Services.AddTransient<MainPageViewModel>();
 		builder.Services.AddTransient<AccessoriesViewModel>();
-		builder.Services.AddTransient<AccessoryDetailViewModel>();
 		builder.Services.AddTransient<CategoriesViewModel>();
 		builder.Services.AddTransient<SlingshotsViewModel>();
-		builder.Services.AddTransient<UsersViewModel>();
+		builder.Services.AddTransient<SettingsViewModel>();
 
 		// Register Pages
-		builder.Services.AddTransient<MainPage>();
 		builder.Services.AddTransient<AccessoriesPage>();
 		builder.Services.AddTransient<CategoriesPage>();
 		builder.Services.AddTransient<SlingshotsPage>();
-		builder.Services.AddTransient<UsersPage>();
+		builder.Services.AddTransient<SettingsPage>();
 
 		return builder.Build();
 	}

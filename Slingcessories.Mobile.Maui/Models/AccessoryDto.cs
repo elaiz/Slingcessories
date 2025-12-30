@@ -13,6 +13,5 @@ public record AccessoryDto(
     string? SubcategoryName,
     List<int>? SlinghotIds,
     List<string>? SlinghotDescriptions,
-    Dictionary<int, int> SlinghotQuantities
+    Dictionary<int, int>? SlinghotQuantities
 );
-

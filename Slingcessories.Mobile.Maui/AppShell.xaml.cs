@@ -1,9 +1,9 @@
-﻿namespace Slingcessories.Mobile.Maui;
+namespace Slingcessories.Mobile.Maui;
 
 public partial class AppShell : Shell
 {
-	public AppShell()
-	{
-		InitializeComponent();
-	}
+    public AppShell()
+    {
+        InitializeComponent();
+    }
 }

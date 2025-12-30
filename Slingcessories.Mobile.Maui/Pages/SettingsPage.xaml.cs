@@ -2,21 +2,20 @@ using Slingcessories.Mobile.Maui.ViewModels;
 
 namespace Slingcessories.Mobile.Maui.Pages;
 
-public partial class UsersPage : ContentPage
+public partial class SettingsPage : ContentPage
 {
-    public UsersPage(UsersViewModel viewModel)
+    private readonly SettingsViewModel _viewModel;
+
+    public SettingsPage(SettingsViewModel viewModel)
     {
         InitializeComponent();
+        _viewModel = viewModel;
         BindingContext = viewModel;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (BindingContext is UsersViewModel vm)
-        {
-            await vm.LoadUsersCommand.ExecuteAsync(null);
-        }
+        await _viewModel.LoadUsersCommand.ExecuteAsync(null);
     }
 }
-
