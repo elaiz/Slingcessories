@@ -4,23 +4,58 @@
              xmlns:vm="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
              xmlns:models="clr-namespace:Slingcessories.Mobile.Maui.Models"
              x:Class="Slingcessories.Mobile.Maui.Pages.CategoriesPage"
-             x:DataType="vm:CategoriesViewModel"
              Title="Categories">
     
     <ScrollView Padding="16">
         <VerticalStackLayout Spacing="16">
             
-            <!-- Debug info -->
-            <Label Text="{Binding Categories.Count, StringFormat='Categories Count: {0}'}" 
-                   FontSize="12" 
-                   TextColor="Blue" />
-            <Label Text="{Binding IsLoading, StringFormat='IsLoading: {0}'}" 
-                   FontSize="12" 
-                   TextColor="Blue" />
-            
-            <!-- Refresh button -->
-            <Button Text="Refresh" 
-                    Command="{Binding LoadCategoriesCommand}" />
+            <!-- Action buttons -->
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="New Category" 
+                        Command="{Binding BeginCreateCategoryCommand}"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="White"
+                        IsEnabled="{Binding IsCreating, Converter={StaticResource InvertedBoolConverter}}" />
+                
+                <Button Text="Refresh" 
+                        Command="{Binding LoadCategoriesCommand}" />
+            </HorizontalStackLayout>
+
+            <!-- Create new category form -->
+            <Frame IsVisible="{Binding IsCreating}"
+                   Padding="12"
+                   CornerRadius="8"
+                   BorderColor="{StaticResource Primary}"
+                   BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray900}}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="New Category" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}" />
+                    
+                    <Entry Placeholder="Category name"
+                           Text="{Binding NewCategoryName}"
+                           FontSize="14" />
+                    
+                    <HorizontalStackLayout Spacing="8" HorizontalOptions="End">
+                        <Button Text="Save"
+                                Command="{Binding SaveNewCategoryCommand}"
+                                BackgroundColor="Green"
+                                TextColor="White"
+                                FontSize="12"
+                                Padding="12,6"
+                                IsEnabled="{Binding IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                        
+                        <Button Text="Cancel"
+                                Command="{Binding CancelCreateCategoryCommand}"
+                                BackgroundColor="Gray"
+                                TextColor="White"
+                                FontSize="12"
+                                Padding="12,6"
+                                IsEnabled="{Binding IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
 
             <!-- Loading indicator -->
             <ActivityIndicator IsRunning="{Binding IsLoading}" 
@@ -45,93 +80,185 @@
                                    HasShadow="True"
                                    BorderColor="Gray"
                                    Margin="0">
-                                <Frame.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=ToggleCategoryCommand}" 
-                                                         CommandParameter="{Binding .}" />
-                                </Frame.GestureRecognizers>
                                 
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <!-- Expand/Collapse Icon -->
-                                    <Label Grid.Column="0"
-                                           FontFamily="Arial"
-                                           FontSize="18"
-                                           TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
-                                           VerticalOptions="Center"
-                                           Margin="0,0,12,0">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="True">
-                                                <Setter Property="Text" Value="▼" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="False">
-                                                <Setter Property="Text" Value="▶" />
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
-                                    
-                                    <!-- Category Name -->
-                                    <Label Grid.Column="1"
-                                           Text="{Binding Name}" 
-                                           FontSize="18" 
-                                           FontAttributes="Bold"
-                                           TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
-                                           VerticalOptions="Center" />
-                                    
-                                    <!-- Subcategory Count Badge -->
-                                    <Frame Grid.Column="2"
-                                           Padding="8,4"
-                                           CornerRadius="12"
-                                           BackgroundColor="{StaticResource Secondary}"
-                                           HasShadow="False"
-                                           VerticalOptions="Center">
-                                        <Label Text="{Binding Subcategories.Count}" 
-                                               FontSize="12"
+                                <StackLayout>
+                                    <!-- Normal View -->
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" IsVisible="{Binding IsEditing, Converter={StaticResource InvertedBoolConverter}}">
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=ToggleCategoryCommand}" 
+                                                                 CommandParameter="{Binding .}" />
+                                        </Grid.GestureRecognizers>
+                                        
+                                        <!-- Expand/Collapse Icon -->
+                                        <Label Grid.Column="0"
+                                               FontFamily="Arial"
+                                               FontSize="18"
+                                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="True">
+                                                    <Setter Property="Text" Value="▼" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="False">
+                                                    <Setter Property="Text" Value="▶" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        
+                                        <!-- Category Name -->
+                                        <Label Grid.Column="1"
+                                               Text="{Binding Name}" 
+                                               FontSize="18" 
                                                FontAttributes="Bold"
-                                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource PrimaryDarkText}}" />
-                                    </Frame>
-                                </Grid>
+                                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                                               VerticalOptions="Center" />
+                                        
+                                        <!-- Edit Button -->
+                                        <Button Grid.Column="2"
+                                                Text="Edit"
+                                                FontSize="12"
+                                                Padding="8,4"
+                                                Margin="8,0,0,0"
+                                                BackgroundColor="{StaticResource Primary}"
+                                                TextColor="White"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=BeginEditCategoryCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                        
+                                        <!-- Subcategory Count Badge -->
+                                        <Frame Grid.Column="3"
+                                               Padding="8,4"
+                                               CornerRadius="12"
+                                               BackgroundColor="{StaticResource Secondary}"
+                                               HasShadow="False"
+                                               VerticalOptions="Center"
+                                               Margin="8,0,0,0">
+                                            <Label Text="{Binding Subcategories.Count}" 
+                                                   FontSize="12"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource PrimaryDarkText}}" />
+                                        </Frame>
+                                    </Grid>
+                                    
+                                    <!-- Edit View -->
+                                    <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding IsEditing}">
+                                        <Entry Grid.Column="0"
+                                               Text="{Binding EditName}"
+                                               FontSize="16"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,8,0" />
+                                        
+                                        <Button Grid.Column="1"
+                                                Text="Save"
+                                                FontSize="12"
+                                                Padding="8,4"
+                                                BackgroundColor="Green"
+                                                TextColor="White"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=SaveCategoryCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}"
+                                                Margin="0,0,4,0" />
+                                        
+                                        <Button Grid.Column="2"
+                                                Text="Cancel"
+                                                FontSize="12"
+                                                Padding="8,4"
+                                                BackgroundColor="Gray"
+                                                TextColor="White"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=CancelEditCategoryCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                    </Grid>
+                                </StackLayout>
                             </Frame>
-                            
-                            <!-- Debug: Show expanded state and count -->
-                            <Label Text="{Binding IsExpanded, StringFormat='IsExpanded: {0}'}"
-                                   FontSize="10"
-                                   TextColor="Orange"
-                                   Margin="20,4,0,0" />
-                            <Label Text="{Binding Subcategories.Count, StringFormat='SubCount: {0}'}"
-                                   FontSize="10"
-                                   TextColor="Orange"
-                                   Margin="20,0,0,4" />
                             
                             <!-- Subcategories List (shown when expanded) -->
                             <VerticalStackLayout IsVisible="{Binding IsExpanded}"
                                                Padding="20,8,0,0"
-                                               Spacing="4"
-                                               BackgroundColor="LightYellow">
-                                
-                                <Label Text="Subcategories section visible!"
-                                       FontSize="12"
-                                       TextColor="Green"
-                                       Margin="0,0,0,8" />
+                                               Spacing="4">
                                 
                                 <CollectionView ItemsSource="{Binding Subcategories}">
                                     <CollectionView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:SubcategoryDto">
+                                        <DataTemplate>
                                             <Frame Padding="12" 
                                                    CornerRadius="6" 
-                                                   BackgroundColor="LightBlue"
-                                                   BorderColor="Blue"
+                                                   BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray900}}"
+                                                   BorderColor="{StaticResource Gray200}"
                                                    Margin="0,0,0,4">
-                                                <Label Text="{Binding Name}" 
-                                                       FontSize="14" 
-                                                       TextColor="Black" />
+                                                
+                                                <ContentView>
+                                                    <ContentView.Triggers>
+                                                        <DataTrigger TargetType="ContentView" Binding="{Binding IsEditing}" Value="False">
+                                                            <Setter Property="Content">
+                                                                <Setter.Value>
+                                                                    <!-- Normal View -->
+                                                                    <Grid ColumnDefinitions="*,Auto">
+                                                                        <Label Grid.Column="0"
+                                                                               Text="{Binding Name}" 
+                                                                               FontSize="14" 
+                                                                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                                                                               VerticalOptions="Center" />
+                                                                        
+                                                                        <Button Grid.Column="1"
+                                                                                Text="Edit"
+                                                                                FontSize="11"
+                                                                                Padding="6,3"
+                                                                                BackgroundColor="{StaticResource Primary}"
+                                                                                TextColor="White"
+                                                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=BeginEditSubcategoryCommand}"
+                                                                                CommandParameter="{Binding .}"
+                                                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                                                    </Grid>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                        <DataTrigger TargetType="ContentView" Binding="{Binding IsEditing}" Value="True">
+                                                            <Setter Property="Content">
+                                                                <Setter.Value>
+                                                                    <!-- Edit View -->
+                                                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                                                        <Entry Grid.Column="0"
+                                                                               Text="{Binding EditName}"
+                                                                               FontSize="14"
+                                                                               VerticalOptions="Center"
+                                                                               Margin="0,0,4,0" />
+                                                                        
+                                                                        <Button Grid.Column="1"
+                                                                                Text="Save"
+                                                                                FontSize="11"
+                                                                                Padding="6,3"
+                                                                                BackgroundColor="Green"
+                                                                                TextColor="White"
+                                                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=SaveSubcategoryCommand}"
+                                                                                CommandParameter="{Binding .}"
+                                                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}"
+                                                                                Margin="0,0,2,0" />
+                                                                        
+                                                                        <Button Grid.Column="2"
+                                                                                Text="Cancel"
+                                                                                FontSize="11"
+                                                                                Padding="6,3"
+                                                                                BackgroundColor="Gray"
+                                                                                TextColor="White"
+                                                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=CancelEditSubcategoryCommand}"
+                                                                                CommandParameter="{Binding .}"
+                                                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                                                    </Grid>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                    </ContentView.Triggers>
+                                                </ContentView>
                                             </Frame>
                                         </DataTemplate>
                                     </CollectionView.ItemTemplate>
                                     
                                     <CollectionView.EmptyView>
                                         <ContentView>
-                                            <Label Text="(Empty: No subcategories)" 
+                                            <Label Text="No subcategories" 
                                                    FontSize="12"
-                                                   TextColor="Red"
+                                                   TextColor="{StaticResource Gray600}"
                                                    Margin="12,4" />
                                         </ContentView>
                                     </CollectionView.EmptyView>

@@ -19,6 +19,15 @@ public partial class CategoriesViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
+    [ObservableProperty]
+    private bool _isSaving;
+
+    [ObservableProperty]
+    private bool _isCreating;
+
+    [ObservableProperty]
+    private string _newCategoryName = string.Empty;
+
     public ObservableCollection<CategoryWithSubcategories> Categories { get; } = new();
 
     public CategoriesViewModel(ApiService apiService)
@@ -58,7 +67,7 @@ public partial class CategoriesViewModel : ObservableObject
                 var categorySubs = _allSubcategories.Where(s => s.CategoryId == category.Id).ToList();
                 foreach (var sub in categorySubs)
                 {
-                    categoryWithSubs.Subcategories.Add(sub);
+                    categoryWithSubs.Subcategories.Add(new EditableSubcategory(sub.Id, sub.Name, sub.CategoryId));
                 }
                 Debug.WriteLine($"  Category {category.Name} has {categoryWithSubs.Subcategories.Count} subcategories");
                 
@@ -98,25 +107,279 @@ public partial class CategoriesViewModel : ObservableObject
         
         Debug.WriteLine($"=== ToggleCategory END ===");
     }
-}
 
-public class CategoryWithSubcategories : ObservableObject
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-
-    private bool _isExpanded;
-    public bool IsExpanded
+    [RelayCommand]
+    public void BeginEditCategory(CategoryWithSubcategories? category)
     {
-        get => _isExpanded;
-        set
+        if (category is null || IsSaving) return;
+
+        Debug.WriteLine($"Beginning edit for category: {category.Name}");
+        
+        // Cancel any other category edits
+        foreach (var cat in Categories.Where(c => c.Id != category.Id))
         {
-            if (SetProperty(ref _isExpanded, value))
+            cat.IsEditing = false;
+        }
+        
+        // Cancel all subcategory edits
+        foreach (var cat in Categories)
+        {
+            foreach (var sub in cat.Subcategories)
             {
-                Debug.WriteLine($"CategoryWithSubcategories.IsExpanded changed to {value} for {Name}");
+                sub.IsEditing = false;
             }
+        }
+
+        category.EditName = category.Name;
+        category.IsEditing = true;
+    }
+
+    [RelayCommand]
+    public void CancelEditCategory(CategoryWithSubcategories? category)
+    {
+        if (category is null) return;
+
+        Debug.WriteLine($"Canceling edit for category: {category.Name}");
+        category.IsEditing = false;
+        category.EditName = string.Empty;
+    }
+
+    [RelayCommand]
+    public async Task SaveCategoryAsync(CategoryWithSubcategories? category)
+    {
+        if (category is null || string.IsNullOrWhiteSpace(category.EditName)) return;
+
+        try
+        {
+            IsSaving = true;
+            ErrorMessage = null;
+
+            Debug.WriteLine($"Saving category {category.Id}: {category.EditName}");
+            
+            var dto = new CategoryDto(category.Id, category.EditName.Trim());
+            var success = await _apiService.UpdateCategoryAsync(category.Id, dto);
+
+            if (success)
+            {
+                category.Name = category.EditName.Trim();
+                category.IsEditing = false;
+                category.EditName = string.Empty;
+                Debug.WriteLine($"Category {category.Id} updated successfully");
+            }
+            else
+            {
+                ErrorMessage = "Failed to update category";
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating category: {ex}");
+            ErrorMessage = $"Error updating category: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
         }
     }
 
-    public ObservableCollection<SubcategoryDto> Subcategories { get; } = new();
+    [RelayCommand]
+    public void BeginEditSubcategory(EditableSubcategory? subcategory)
+    {
+        if (subcategory is null || IsSaving) return;
+
+        Debug.WriteLine($"Beginning edit for subcategory: {subcategory.Name}");
+        
+        // Cancel any category edits
+        foreach (var cat in Categories)
+        {
+            cat.IsEditing = false;
+        }
+
+        // Cancel other subcategory edits
+        foreach (var cat in Categories)
+        {
+            foreach (var sub in cat.Subcategories)
+            {
+                if (sub.Id != subcategory.Id)
+                {
+                    sub.IsEditing = false;
+                }
+            }
+        }
+
+        subcategory.EditName = subcategory.Name;
+        subcategory.IsEditing = true;
+    }
+
+    [RelayCommand]
+    public void CancelEditSubcategory(EditableSubcategory? subcategory)
+    {
+        if (subcategory is null) return;
+
+        Debug.WriteLine($"Canceling edit for subcategory: {subcategory.Name}");
+        subcategory.IsEditing = false;
+        subcategory.EditName = string.Empty;
+    }
+
+    [RelayCommand]
+    public async Task SaveSubcategoryAsync(EditableSubcategory? subcategory)
+    {
+        if (subcategory is null || string.IsNullOrWhiteSpace(subcategory.EditName)) return;
+
+        try
+        {
+            IsSaving = true;
+            ErrorMessage = null;
+
+            Debug.WriteLine($"Saving subcategory {subcategory.Id}: {subcategory.EditName}");
+            
+            var dto = new SubcategoryDto(subcategory.Id, subcategory.EditName.Trim(), subcategory.CategoryId);
+            var success = await _apiService.UpdateSubcategoryAsync(subcategory.Id, dto);
+
+            if (success)
+            {
+                subcategory.Name = subcategory.EditName.Trim();
+                subcategory.IsEditing = false;
+                subcategory.EditName = string.Empty;
+                Debug.WriteLine($"Subcategory {subcategory.Id} updated successfully");
+            }
+            else
+            {
+                ErrorMessage = "Failed to update subcategory";
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating subcategory: {ex}");
+            ErrorMessage = $"Error updating subcategory: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    [RelayCommand]
+    public void BeginCreateCategory()
+    {
+        if (IsCreating || IsSaving) return;
+
+        Debug.WriteLine("Beginning create category");
+        
+        // Cancel any edits
+        foreach (var cat in Categories)
+        {
+            cat.IsEditing = false;
+            foreach (var sub in cat.Subcategories)
+            {
+                sub.IsEditing = false;
+            }
+        }
+
+        NewCategoryName = string.Empty;
+        IsCreating = true;
+    }
+
+    [RelayCommand]
+    public void CancelCreateCategory()
+    {
+        Debug.WriteLine("Canceling create category");
+        IsCreating = false;
+        NewCategoryName = string.Empty;
+    }
+
+    [RelayCommand]
+    public async Task SaveNewCategoryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewCategoryName)) return;
+
+        try
+        {
+            IsSaving = true;
+            ErrorMessage = null;
+
+            Debug.WriteLine($"Creating new category: {NewCategoryName}");
+            
+            var dto = new CreateCategoryDto(NewCategoryName.Trim());
+            var created = await _apiService.CreateCategoryAsync(dto);
+
+            if (created != null)
+            {
+                var newCategory = new CategoryWithSubcategories
+                {
+                    Id = created.Id,
+                    Name = created.Name
+                };
+                
+                Categories.Add(newCategory);
+                
+                // Sort categories by name
+                var sorted = Categories.OrderBy(c => c.Name).ToList();
+                Categories.Clear();
+                foreach (var cat in sorted)
+                {
+                    Categories.Add(cat);
+                }
+                
+                IsCreating = false;
+                NewCategoryName = string.Empty;
+                Debug.WriteLine($"Category created successfully: {created.Name}");
+            }
+            else
+            {
+                ErrorMessage = "Failed to create category";
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error creating category: {ex}");
+            ErrorMessage = $"Error creating category: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+}
+
+public partial class CategoryWithSubcategories : ObservableObject
+{
+    public int Id { get; set; }
+    
+    [ObservableProperty]
+    private string _name = string.Empty;
+
+    [ObservableProperty]
+    private bool _isExpanded;
+
+    [ObservableProperty]
+    private bool _isEditing;
+
+    [ObservableProperty]
+    private string _editName = string.Empty;
+
+    public ObservableCollection<EditableSubcategory> Subcategories { get; } = new();
+}
+
+public partial class EditableSubcategory : ObservableObject
+{
+    public int Id { get; set; }
+    
+    [ObservableProperty]
+    private string _name = string.Empty;
+    
+    public int CategoryId { get; set; }
+
+    [ObservableProperty]
+    private bool _isEditing;
+
+    [ObservableProperty]
+    private string _editName = string.Empty;
+
+    public EditableSubcategory(int id, string name, int categoryId)
+    {
+        Id = id;
+        Name = name;
+        CategoryId = categoryId;
+    }
 }

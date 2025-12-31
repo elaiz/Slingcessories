@@ -40,6 +40,19 @@ public class ApiService
         return result ?? new List<CategoryDto>();
     }
 
+    public async Task<CategoryDto?> CreateCategoryAsync(CreateCategoryDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("categories", dto);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CategoryDto>();
+    }
+
+    public async Task<bool> UpdateCategoryAsync(int id, CategoryDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"categories/{id}", dto);
+        return response.IsSuccessStatusCode;
+    }
+
     // Get ALL subcategories at once (Blazor approach - more efficient)
     public async Task<List<SubcategoryDto>> GetAllSubcategoriesAsync()
     {
@@ -57,6 +70,12 @@ public class ApiService
             Debug.WriteLine($"Exception in GetAllSubcategoriesAsync: {ex.Message}");
             throw;
         }
+    }
+
+    public async Task<bool> UpdateSubcategoryAsync(int id, SubcategoryDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"subcategories/{id}", dto);
+        return response.IsSuccessStatusCode;
     }
 
     public async Task<List<SubcategoryDto>> GetSubcategoriesAsync(int categoryId)
