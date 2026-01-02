@@ -17,6 +17,8 @@
             <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
             <converters:ListToStringConverter x:Key="ListToStringConverter" />
             <converters:ListHasItemsConverter x:Key="ListHasItemsConverter" />
+            <converters:AllTrueConverter x:Key="AllTrueConverter" />
+            <converters:CategoryIdEqualsConverter x:Key="CategoryIdEqualsConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

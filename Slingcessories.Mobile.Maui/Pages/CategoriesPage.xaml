@@ -83,7 +83,7 @@
                                 
                                 <StackLayout>
                                     <!-- Normal View -->
-                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" IsVisible="{Binding IsEditing, Converter={StaticResource InvertedBoolConverter}}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" IsVisible="{Binding IsEditing, Converter={StaticResource InvertedBoolConverter}}">
                                         <Grid.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=ToggleCategoryCommand}" 
                                                                  CommandParameter="{Binding .}" />
@@ -98,10 +98,10 @@
                                                Margin="0,0,12,0">
                                             <Label.Triggers>
                                                 <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="True">
-                                                    <Setter Property="Text" Value="▼" />
+                                                    <Setter Property="Text" Value="&#x25BC;" />
                                                 </DataTrigger>
                                                 <DataTrigger TargetType="Label" Binding="{Binding IsExpanded}" Value="False">
-                                                    <Setter Property="Text" Value="▶" />
+                                                    <Setter Property="Text" Value="&#x25B6;" />
                                                 </DataTrigger>
                                             </Label.Triggers>
                                         </Label>
@@ -125,9 +125,21 @@
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=BeginEditCategoryCommand}"
                                                 CommandParameter="{Binding .}"
                                                 IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
-                                        
+                                                
+                                        <!-- Add Subcategory Button -->
+                                        <Button Grid.Column="3"
+                                                Text="+ Add Subcategory"
+                                                FontSize="12"
+                                                Padding="8,4"
+                                                Margin="8,0,0,0"
+                                                BackgroundColor="{StaticResource Secondary}"
+                                                TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=BeginAddSubcategoryCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                                
                                         <!-- Subcategory Count Badge -->
-                                        <Frame Grid.Column="3"
+                                        <Frame Grid.Column="4"
                                                Padding="8,4"
                                                CornerRadius="12"
                                                BackgroundColor="{StaticResource Secondary}"
@@ -170,6 +182,43 @@
                                                 CommandParameter="{Binding .}"
                                                 IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
                                     </Grid>
+                                    
+                                    <!-- Inline Add Subcategory Form (shows in place of button) -->
+                                    <Frame Padding="8"
+                                           Margin="0,8,0,0"
+                                           CornerRadius="6"
+                                           BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray900}}"
+                                           BorderColor="{StaticResource Primary}">
+                                        <Frame.IsVisible>
+                                            <MultiBinding Converter="{StaticResource CategoryIdEqualsConverter}">
+                                                <Binding Path="Id" />
+                                                <Binding Source="{RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}" Path="AddingSubcategoryCategoryId" />
+                                            </MultiBinding>
+                                        </Frame.IsVisible>
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                            <Entry Grid.Column="0"
+                                                   Placeholder="Subcategory name"
+                                                   Text="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=NewSubcategoryName}"
+                                                   FontSize="14" />
+                                            <Button Grid.Column="1"
+                                                    Text="Save"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=SaveNewSubcategoryCommand}"
+                                                    CommandParameter="{Binding .}"
+                                                    BackgroundColor="Green"
+                                                    TextColor="White"
+                                                    FontSize="12"
+                                                    Padding="8,4"
+                                                    IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                            <Button Grid.Column="2"
+                                                    Text="Cancel"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=CancelAddSubcategoryCommand}"
+                                                    BackgroundColor="Gray"
+                                                    TextColor="White"
+                                                    FontSize="12"
+                                                    Padding="8,4"
+                                                    IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                        </Grid>
+                                    </Frame>
                                 </StackLayout>
                             </Frame>
                             

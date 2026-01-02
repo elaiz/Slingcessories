@@ -28,6 +28,12 @@ public partial class CategoriesViewModel : ObservableObject
     [ObservableProperty]
     private string _newCategoryName = string.Empty;
 
+    [ObservableProperty]
+    private int? _addingSubcategoryCategoryId;
+
+    [ObservableProperty]
+    private string _newSubcategoryName = string.Empty;
+
     public ObservableCollection<CategoryWithSubcategories> Categories { get; } = new();
 
     public CategoriesViewModel(ApiService apiService)
@@ -334,6 +340,57 @@ public partial class CategoriesViewModel : ObservableObject
         {
             Debug.WriteLine($"Error creating category: {ex}");
             ErrorMessage = $"Error creating category: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    [RelayCommand]
+    public void BeginAddSubcategory(CategoryWithSubcategories? category)
+    {
+        if (category is null || IsSaving) return;
+        AddingSubcategoryCategoryId = category.Id;
+        NewSubcategoryName = string.Empty;
+    }
+
+    [RelayCommand]
+    public void CancelAddSubcategory()
+    {
+        AddingSubcategoryCategoryId = null;
+        NewSubcategoryName = string.Empty;
+    }
+
+    [RelayCommand]
+    public async Task SaveNewSubcategoryAsync(CategoryWithSubcategories? category)
+    {
+        if (category is null || string.IsNullOrWhiteSpace(NewSubcategoryName)) return;
+        try
+        {
+            IsSaving = true;
+            ErrorMessage = null;
+            var dto = new CreateSubcategoryDto(NewSubcategoryName.Trim(), category.Id);
+            var created = await _apiService.CreateSubcategoryAsync(dto);
+            if (created != null)
+            {
+                category.Subcategories.Add(new EditableSubcategory(created.Id, created.Name, created.CategoryId));
+                // Sort subcategories by name
+                var sorted = category.Subcategories.OrderBy(s => s.Name).ToList();
+                category.Subcategories.Clear();
+                foreach (var sub in sorted)
+                    category.Subcategories.Add(sub);
+                AddingSubcategoryCategoryId = null;
+                NewSubcategoryName = string.Empty;
+            }
+            else
+            {
+                ErrorMessage = "Failed to create subcategory";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error creating subcategory: {ex.Message}";
         }
         finally
         {

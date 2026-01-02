@@ -174,4 +174,11 @@ public class ApiService
         var response = await _httpClient.DeleteAsync($"accessories/{id}");
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<SubcategoryDto?> CreateSubcategoryAsync(CreateSubcategoryDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("subcategories", dto);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SubcategoryDto>();
+    }
 }
