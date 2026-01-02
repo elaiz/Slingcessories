@@ -34,6 +34,9 @@ public partial class CategoriesViewModel : ObservableObject
     [ObservableProperty]
     private string _newSubcategoryName = string.Empty;
 
+    [ObservableProperty]
+    private int? _confirmDeleteSubcategoryId;
+
     public ObservableCollection<CategoryWithSubcategories> Categories { get; } = new();
 
     public CategoriesViewModel(ApiService apiService)
@@ -263,6 +266,66 @@ public partial class CategoriesViewModel : ObservableObject
         {
             IsSaving = false;
         }
+    }
+
+    [RelayCommand]
+    public async Task DeleteSubcategoryAsync(EditableSubcategory? subcategory)
+    {
+        if (subcategory is null) return;
+
+        try
+        {
+            IsSaving = true;
+            ErrorMessage = null;
+
+            Debug.WriteLine($"Deleting subcategory {subcategory.Id}: {subcategory.Name}");
+            
+            var success = await _apiService.DeleteSubcategoryAsync(subcategory.Id);
+
+            if (success)
+            {
+                // Find the category that contains this subcategory and remove it
+                foreach (var category in Categories)
+                {
+                    var subToRemove = category.Subcategories.FirstOrDefault(s => s.Id == subcategory.Id);
+                    if (subToRemove != null)
+                    {
+                        category.Subcategories.Remove(subToRemove);
+                        Debug.WriteLine($"Subcategory {subcategory.Id} deleted successfully from category {category.Name}");
+                        break;
+                    }
+                }
+                
+                // Clear confirmation state
+                ConfirmDeleteSubcategoryId = null;
+            }
+            else
+            {
+                ErrorMessage = "Failed to delete subcategory";
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting subcategory: {ex}");
+            ErrorMessage = $"Error deleting subcategory: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    [RelayCommand]
+    public void BeginDeleteSubcategory(EditableSubcategory? subcategory)
+    {
+        if (subcategory is null) return;
+        ConfirmDeleteSubcategoryId = subcategory.Id;
+    }
+
+    [RelayCommand]
+    public void CancelDeleteSubcategory()
+    {
+        ConfirmDeleteSubcategoryId = null;
     }
 
     [RelayCommand]

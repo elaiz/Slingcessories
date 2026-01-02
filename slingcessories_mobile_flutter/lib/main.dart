@@ -4,11 +4,8 @@ import 'providers/accessories_provider.dart';
 import 'providers/categories_provider.dart';
 import 'providers/slingshots_provider.dart';
 import 'providers/users_provider.dart';
-import 'pages/home_page.dart';
-import 'pages/accessories_page.dart';
-import 'pages/categories_page.dart';
-import 'pages/slingshots_page.dart';
-import 'pages/users_page.dart';
+import 'theme/app_theme.dart';
+import 'widgets/app_shell.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,20 +25,10 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Slingcessories',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const HomePage(),
-          '/accessories': (context) => const AccessoriesPage(),
-          '/categories': (context) => const CategoriesPage(),
-          '/slingshots': (context) => const SlingshotsPage(),
-          '/users': (context) => const UsersPage(),
-        },
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const AppShell(),
       ),
     );
   }
 }
-

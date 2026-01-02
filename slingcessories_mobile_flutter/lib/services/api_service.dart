@@ -12,10 +12,11 @@ import '../models/user_dto.dart';
 import '../models/create_user_dto.dart';
 
 class ApiService {
-  // For Android emulator, use: http://10.0.2.2:5001
-  // For iOS simulator, use: http://localhost:5001
+  // For Android emulator, use: https://10.0.2.2:7289
+  // For iOS simulator, use: https://localhost:7289
+  // For web/Windows, use: https://localhost:7289
   // For physical device, use your computer's IP address
-  static const String baseUrl = 'http://10.0.2.2:5001/api';
+  static const String baseUrl = 'https://localhost:7289/api';
 
   // Accessories
   Future<List<AccessoryDto>> getAccessories({bool? wishlist}) async {

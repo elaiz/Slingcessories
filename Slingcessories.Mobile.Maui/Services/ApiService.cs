@@ -78,6 +78,12 @@ public class ApiService
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<bool> DeleteSubcategoryAsync(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"subcategories/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
     public async Task<List<SubcategoryDto>> GetSubcategoriesAsync(int categoryId)
     {
         var url = $"categories/{categoryId}/subcategories";

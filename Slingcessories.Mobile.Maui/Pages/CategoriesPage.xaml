@@ -242,7 +242,7 @@
                                                             <Setter Property="Content">
                                                                 <Setter.Value>
                                                                     <!-- Normal View -->
-                                                                    <Grid ColumnDefinitions="*,Auto">
+                                                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                                                                         <Label Grid.Column="0"
                                                                                Text="{Binding Name}" 
                                                                                FontSize="14" 
@@ -253,11 +253,71 @@
                                                                                 Text="Edit"
                                                                                 FontSize="11"
                                                                                 Padding="6,3"
+                                                                                Margin="0,0,4,0"
                                                                                 BackgroundColor="{StaticResource Primary}"
                                                                                 TextColor="White"
                                                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=BeginEditSubcategoryCommand}"
                                                                                 CommandParameter="{Binding .}"
                                                                                 IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}" />
+                                                                        
+                                                                        <!-- Show Delete button when not confirming -->
+                                                                        <Button Grid.Column="2"
+                                                                                Text="Delete"
+                                                                                FontSize="11"
+                                                                                Padding="6,3"
+                                                                                BackgroundColor="Red"
+                                                                                TextColor="White"
+                                                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=BeginDeleteSubcategoryCommand}"
+                                                                                CommandParameter="{Binding .}"
+                                                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}">
+                                                                            <Button.Triggers>
+                                                                                <DataTrigger TargetType="Button" 
+                                                                                             Binding="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=ConfirmDeleteSubcategoryId}" 
+                                                                                             Value="{Binding Id}">
+                                                                                    <Setter Property="IsVisible" Value="False" />
+                                                                                </DataTrigger>
+                                                                            </Button.Triggers>
+                                                                        </Button>
+                                                                        
+                                                                        <!-- Show Confirm button when confirming this subcategory -->
+                                                                        <Button Grid.Column="2"
+                                                                                Text="Confirm"
+                                                                                FontSize="11"
+                                                                                Padding="6,3"
+                                                                                Margin="0,0,2,0"
+                                                                                BackgroundColor="Red"
+                                                                                TextColor="White"
+                                                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=DeleteSubcategoryCommand}"
+                                                                                CommandParameter="{Binding .}"
+                                                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}"
+                                                                                IsVisible="False">
+                                                                            <Button.Triggers>
+                                                                                <DataTrigger TargetType="Button" 
+                                                                                             Binding="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=ConfirmDeleteSubcategoryId}" 
+                                                                                             Value="{Binding Id}">
+                                                                                    <Setter Property="IsVisible" Value="True" />
+                                                                                </DataTrigger>
+                                                                            </Button.Triggers>
+                                                                        </Button>
+                                                                        
+                                                                        <!-- Show Cancel button when confirming this subcategory -->
+                                                                        <Button Grid.Column="3"
+                                                                                Text="Cancel"
+                                                                                FontSize="11"
+                                                                                Padding="6,3"
+                                                                                BackgroundColor="Gray"
+                                                                                TextColor="White"
+                                                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=CancelDeleteSubcategoryCommand}"
+                                                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=IsSaving, Converter={StaticResource InvertedBoolConverter}}"
+                                                                                IsVisible="False">
+                                                                            <Button.Triggers>
+                                                                                <DataTrigger TargetType="Button" 
+                                                                                             Binding="{Binding Source={RelativeSource AncestorType={x:Type vm:CategoriesViewModel}}, Path=ConfirmDeleteSubcategoryId}" 
+                                                                                             Value="{Binding Id}">
+                                                                                    <Setter Property="IsVisible" Value="True" />
+                                                                                </DataTrigger>
+                                                                            </Button.Triggers>
+                                                                        </Button>
                                                                     </Grid>
                                                                 </Setter.Value>
                                                             </Setter>
