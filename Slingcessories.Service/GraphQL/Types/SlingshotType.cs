@@ -22,8 +22,9 @@ public class SlingshotResolvers
 {
     public async Task<List<Accessory>> GetAccessories(
         [Parent] Slingshot slingshot,
-        [Service] Data.AppDbContext context)
+        [Service] IDbContextFactory<Data.AppDbContext> contextFactory)
     {
+        using var context = await contextFactory.CreateDbContextAsync();
         return await context.Accessories
             .Where(a => a.AccessorySlingshots.Any(a_s => a_s.SlingshotId == slingshot.Id))
             .ToListAsync();
