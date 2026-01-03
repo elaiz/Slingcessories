@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Slingcessories.Service.Data;
+using Slingcessories.Service.GraphQL;
+using Slingcessories.Service.GraphQL.Types;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,16 +20,32 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// EF Core SQL Server
-builder.Services.AddDbContext<AppDbContext>(options =>
+// Add DbContext Factory for GraphQL
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add pooled DbContext for HotChocolate
+builder.Services.AddPooledDbContextFactory<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// GraphQL
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddType<AccessoryType>()
+    .AddType<SlingshotType>()
+    .RegisterDbContext<AppDbContext>(DbContextKind.Pooled)
+    .AddProjections()
+    .AddFiltering()
+    .AddSorting();
 
 var app = builder.Build();
 
 // Apply pending migrations (creates DB if it doesn't exist)
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+    using var db = contextFactory.CreateDbContext();
     db.Database.Migrate();
     // Optional: seed data here
 }
@@ -46,5 +64,8 @@ app.UseCors("AllowAll");
 app.UseAuthorization();
 
 app.MapControllers();
+
+// GraphQL endpoint
+app.MapGraphQL();
 
 app.Run();

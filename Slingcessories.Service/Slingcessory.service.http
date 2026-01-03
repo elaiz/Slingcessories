@@ -4,3 +4,93 @@ GET {{Slingcessories.service_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+# GraphQL - Get all accessories with category and slingshots
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ accessories { id title price units wishlist category { id name } subcategory { id name } slingshots { id year model color } } }"
+}
+
+###
+
+# GraphQL - Get single accessory by ID
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ accessoryById(id: 1) { id title price units wishlist pictureUrl url category { id name } subcategory { id name } slingshots { id year model color } } }"
+}
+
+###
+
+# GraphQL - Get all slingshots with accessories
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ slingshots { id year model color accessories { id title price } } }"
+}
+
+###
+
+# GraphQL - Get single slingshot by ID
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ slingshotById(id: 1) { id year model color accessories { id title price category { name } } } }"
+}
+
+###
+
+# GraphQL - Get all categories with subcategories
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ categories { id name subcategories { id name } } }"
+}
+
+###
+
+# GraphQL - Get category by ID
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ categoryById(id: 1) { id name subcategories { id name } } }"
+}
+
+###
+
+# GraphQL - Filter accessories by wishlist
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ accessories(where: { wishlist: { eq: true } }) { id title price wishlist } }"
+}
+
+###
+
+# GraphQL - Sort accessories by price
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ accessories(order: { price: DESC }) { id title price } }"
+}
+
+###
+
+# GraphQL - Complex query with filtering and sorting
+POST {{Slingcessories.service_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "{ accessories(where: { wishlist: { eq: false } }, order: { title: ASC }) { id title price units category { name } } }"
+}
+
+###
