@@ -4,6 +4,7 @@
 @inject IConfiguration Configuration
 @inject IJSRuntime JS
 @inject UserStateService UserStateService
+@inject PageStateService PageStateService
 @implements IDisposable
 
 <PageTitle>@(Wishlist ? "Wishlist" : "Accessories")</PageTitle>
@@ -449,6 +450,8 @@
     private string? error;
     private ViewMode viewMode = ViewMode.Cards;
     private HashSet<int> expandedAccessories = new();
+    private const string ViewModeStateKey = "accessories_viewMode";
+    private const string ExpandedAccessoriesStateKey = "accessories_expandedItems";
 
     private List<Accessory> FilteredItems => Items.Where(a => a.Wishlist == Wishlist).ToList();
 
@@ -484,6 +487,13 @@
     {
         // Subscribe to user change events
         UserStateService.OnUserChanged += HandleUserChanged;
+        
+        // Load saved view mode preference
+        var savedViewMode = await PageStateService.LoadStateAsync(ViewModeStateKey, ViewMode.Cards);
+        viewMode = savedViewMode;
+        
+        // Load saved expanded accessories state
+        expandedAccessories = await PageStateService.LoadStateAsync<HashSet<int>>(ExpandedAccessoriesStateKey, new HashSet<int>());
         
         try
         {
@@ -996,17 +1006,23 @@
         public Dictionary<int, int> SlinghotQuantities { get; set; } = new();
     }
 
-    private void SetViewMode(ViewMode mode)
+    private async void SetViewMode(ViewMode mode)
     {
         viewMode = mode;
+        
+        // Persist the view mode preference
+        await PageStateService.SaveStateAsync(ViewModeStateKey, mode);
     }
 
-    private void ToggleAccessoryExpansion(int accessoryId)
+    private async void ToggleAccessoryExpansion(int accessoryId)
     {
         if (expandedAccessories.Contains(accessoryId))
             expandedAccessories.Remove(accessoryId);
         else
             expandedAccessories.Add(accessoryId);
+        
+        // Persist the expanded state
+        await PageStateService.SaveStateAsync(ExpandedAccessoriesStateKey, expandedAccessories);
     }
 
     public void Dispose()

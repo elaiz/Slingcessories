@@ -3,6 +3,7 @@
 @using Slingcessories.Services
 @inject HttpClient Http
 @inject UserStateService UserStateService
+@inject PageStateService PageStateService
 @implements IDisposable
 
 <PageTitle>Slingshots</PageTitle>
@@ -342,6 +343,11 @@ else
     private bool isLoading = true;
     private string? errorMessage;
 
+    // State keys for persistence
+    private const string ExpandedAccessoriesStateKey = "slingshots_expandedAccessories";
+    private const string ExpandedCategoriesStateKey = "slingshots_expandedCategories";
+    private const string ExpandedSubcategoriesStateKey = "slingshots_expandedSubcategories";
+
     private int? editingId;
     private SlinghotEditModel editModel = new();
     private bool saving;
@@ -376,6 +382,12 @@ else
     {
         // Subscribe to user change events
         UserStateService.OnUserChanged += HandleUserChanged;
+        
+        // Load saved expansion states
+        expandedAccessories = await PageStateService.LoadStateAsync<HashSet<int>>(ExpandedAccessoriesStateKey, new HashSet<int>());
+        expandedCategories = await PageStateService.LoadStateAsync<HashSet<string>>(ExpandedCategoriesStateKey, new HashSet<string>());
+        expandedSubcategories = await PageStateService.LoadStateAsync<HashSet<string>>(ExpandedSubcategoriesStateKey, new HashSet<string>());
+        
         await LoadAsync();
     }
 
@@ -416,15 +428,18 @@ else
         }
     }
 
-    private void ToggleAccessories(int slingshotId)
+    private async void ToggleAccessories(int slingshotId)
     {
         if (expandedAccessories.Contains(slingshotId))
             expandedAccessories.Remove(slingshotId);
         else
             expandedAccessories.Add(slingshotId);
+        
+        // Save the state
+        await SaveExpandedStatesAsync();
     }
 
-    private void ToggleExpandAll()
+    private async void ToggleExpandAll()
     {
         if (allExpanded)
         {
@@ -441,18 +456,24 @@ else
             expandedSubcategories.Clear();
             allExpanded = true;
         }
+        
+        // Save the state
+        await SaveExpandedStatesAsync();
     }
 
-    private void ToggleCategory(int slingshotId, int categoryId)
+    private async void ToggleCategory(int slingshotId, int categoryId)
     {
         var key = $"{slingshotId}_{categoryId}";
         if (expandedCategories.Contains(key))
             expandedCategories.Remove(key);
         else
             expandedCategories.Add(key);
+        
+        // Save the state
+        await SaveExpandedStatesAsync();
     }
 
-    private void ToggleSubcategory(int slingshotId, int categoryId, int? subcategoryId)
+    private async void ToggleSubcategory(int slingshotId, int categoryId, int? subcategoryId)
     {
         if (subcategoryId == null) return;
         var key = $"{slingshotId}_{categoryId}_{subcategoryId}";
@@ -460,6 +481,16 @@ else
             expandedSubcategories.Remove(key);
         else
             expandedSubcategories.Add(key);
+        
+        // Save the state
+        await SaveExpandedStatesAsync();
+    }
+
+    private async Task SaveExpandedStatesAsync()
+    {
+        await PageStateService.SaveStateAsync(ExpandedAccessoriesStateKey, expandedAccessories);
+        await PageStateService.SaveStateAsync(ExpandedCategoriesStateKey, expandedCategories);
+        await PageStateService.SaveStateAsync(ExpandedSubcategoriesStateKey, expandedSubcategories);
     }
 
     private List<AccessoryInfoDto> GetAccessoriesForSlingshot(int slingshotId)

@@ -16,5 +16,6 @@ builder.Services.AddScoped(_ => new HttpClient
 // Register services
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserStateService>();
+builder.Services.AddScoped<PageStateService>();
 
 await builder.Build().RunAsync();
