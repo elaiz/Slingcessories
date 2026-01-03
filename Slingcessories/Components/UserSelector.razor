@@ -1,0 +1,78 @@
+@using Slingcessories.Services
+@inject UserService UserService
+@inject UserStateService UserStateService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="user-selector">
+    @if (users != null && users.Any())
+    {
+        <select class="form-select form-select-sm" @onchange="OnUserSelected" value="@UserStateService.CurrentUserId">
+            <option value="">Select User</option>
+            @foreach (var user in users)
+            {
+                <option value="@user.Id">@user.FirstName @user.LastName</option>
+            }
+        </select>
+    }
+    else if (users != null)
+    {
+        <div class="alert alert-warning mb-0 py-2 px-3 d-flex align-items-center gap-2" role="alert">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span class="small">No users registered.</span>
+            <button class="btn btn-sm btn-primary ms-2" @onclick="GoToRegistration">
+                Create Account
+            </button>
+        </div>
+    }
+    else
+    {
+        <span class="text-muted small">Loading...</span>
+    }
+</div>
+
+@code {
+    private List<UserDto>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+        UserStateService.OnUserChanged += HandleUserChanged;
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await UserService.GetAllUsersAsync();
+        StateHasChanged();
+    }
+
+    private async Task OnUserSelected(ChangeEventArgs e)
+    {
+        var userId = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await UserStateService.SetCurrentUserAsync(userId);
+        }
+        else
+        {
+            await UserStateService.ClearCurrentUserAsync();
+        }
+    }
+
+    private void HandleUserChanged()
+    {
+        // Reload users when a new user is registered
+        InvokeAsync(async () => await LoadUsers());
+        StateHasChanged();
+    }
+
+    private void GoToRegistration()
+    {
+        Navigation.NavigateTo("/register");
+    }
+
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
+    }
+}

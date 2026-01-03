@@ -4,10 +4,9 @@ public class Accessory
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
-    public string? PictureUrl { get; set; }   // now nullable
-    public int Units { get; set; }
+    public string? PictureUrl { get; set; }
     public decimal Price { get; set; }
-    public string? Url { get; set; }          // now nullable
+    public string? Url { get; set; }
     public bool Wishlist { get; set; }
 
     public int CategoryId { get; set; }

@@ -1,0 +1,24 @@
+﻿<?xml version = "1.0" encoding = "UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Slingcessories.Mobile.Maui"
+             xmlns:converters="clr-namespace:Slingcessories.Mobile.Maui.Converters"
+             x:Class="Slingcessories.Mobile.Maui.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Value Converters -->
+            <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+            <converters:IsNullConverter x:Key="IsNullConverter" />
+            <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+            <converters:ListToStringConverter x:Key="ListToStringConverter" />
+            <converters:ListHasItemsConverter x:Key="ListHasItemsConverter" />
+            <converters:AllTrueConverter x:Key="AllTrueConverter" />
+            <converters:CategoryIdEqualsConverter x:Key="CategoryIdEqualsConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

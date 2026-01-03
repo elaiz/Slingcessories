@@ -14,6 +14,7 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
     public async Task<ActionResult<IEnumerable<AccessoryDto>>> GetAll([FromQuery] bool? wishlist)
     {
         var query = db.Accessories.AsQueryable();
+        
         if (wishlist is not null)
         {
             query = query.Where(a => a.Wishlist == wishlist);
@@ -31,7 +32,6 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             a.Id,
             a.Title,
             a.PictureUrl,
-            a.Units,
             a.Price,
             a.Url,
             a.Wishlist,
@@ -40,7 +40,8 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             a.Category!.Name,
             a.Subcategory?.Name,
             a.AccessorySlingshots.Select(as_s => as_s.SlingshotId).ToList(),
-            a.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList()
+            a.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList(),
+            a.AccessorySlingshots.ToDictionary(as_s => as_s.SlingshotId, as_s => as_s.Quantity)
         )));
     }
 
@@ -60,7 +61,6 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             a.Id, 
             a.Title, 
             a.PictureUrl, 
-            a.Units, 
             a.Price, 
             a.Url, 
             a.Wishlist, 
@@ -69,7 +69,8 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             a.Category!.Name, 
             a.Subcategory?.Name,
             a.AccessorySlingshots.Select(as_s => as_s.SlingshotId).ToList(),
-            a.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList()
+            a.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList(),
+            a.AccessorySlingshots.ToDictionary(as_s => as_s.SlingshotId, as_s => as_s.Quantity)
         );
     }
 
@@ -80,7 +81,6 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
         {
             Title = dto.Title,
             PictureUrl = dto.PictureUrl,
-            Units = dto.Units,
             Price = dto.Price,
             Url = dto.Url,
             Wishlist = dto.Wishlist,
@@ -91,15 +91,16 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
         db.Accessories.Add(entity);
         await db.SaveChangesAsync();
 
-        // Add slingshot relationships
-        if (dto.SlinghotIds != null && dto.SlinghotIds.Any())
+        // Add slingshot relationships with quantities
+        if (dto.SlinghotQuantities != null && dto.SlinghotQuantities.Any())
         {
-            foreach (var slinghotId in dto.SlinghotIds)
+            foreach (var (slingshotId, quantity) in dto.SlinghotQuantities)
             {
                 db.AccessorySlingshots.Add(new AccessorySlingshot
                 {
                     AccessoryId = entity.Id,
-                    SlingshotId = slinghotId
+                    SlingshotId = slingshotId,
+                    Quantity = quantity
                 });
             }
             await db.SaveChangesAsync();
@@ -116,7 +117,6 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             withNav.Id, 
             withNav.Title, 
             withNav.PictureUrl, 
-            withNav.Units, 
             withNav.Price, 
             withNav.Url, 
             withNav.Wishlist, 
@@ -125,7 +125,8 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
             withNav.Category!.Name, 
             withNav.Subcategory?.Name,
             withNav.AccessorySlingshots.Select(as_s => as_s.SlingshotId).ToList(),
-            withNav.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList()
+            withNav.AccessorySlingshots.Select(as_s => $"{as_s.Slingshot.Year} {as_s.Slingshot.Model} ({as_s.Slingshot.Color})").ToList(),
+            withNav.AccessorySlingshots.ToDictionary(as_s => as_s.SlingshotId, as_s => as_s.Quantity)
         );
         
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, result);
@@ -143,26 +144,26 @@ public class AccessoriesController(AppDbContext db) : ControllerBase
 
         entity.Title = dto.Title;
         entity.PictureUrl = dto.PictureUrl;
-        entity.Units = dto.Units;
         entity.Price = dto.Price;
         entity.Url = dto.Url;
         entity.Wishlist = dto.Wishlist;
         entity.CategoryId = dto.CategoryId;
         entity.SubcategoryId = dto.SubcategoryId;
 
-        // Update slingshot relationships
+        // Update slingshot relationships with quantities
         // Remove existing relationships
         entity.AccessorySlingshots.Clear();
         
-        // Add new relationships
-        if (dto.SlinghotIds != null && dto.SlinghotIds.Any())
+        // Add new relationships with quantities
+        if (dto.SlinghotQuantities != null && dto.SlinghotQuantities.Any())
         {
-            foreach (var slinghotId in dto.SlinghotIds)
+            foreach (var (slingshotId, quantity) in dto.SlinghotQuantities)
             {
                 entity.AccessorySlingshots.Add(new AccessorySlingshot
                 {
                     AccessoryId = entity.Id,
-                    SlingshotId = slinghotId
+                    SlingshotId = slingshotId,
+                    Quantity = quantity
                 });
             }
         }

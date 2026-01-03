@@ -12,23 +12,31 @@ public class SubcategoriesController(AppDbContext db) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<SubcategoryDto>>> GetAll()
-        => Ok(await db.Subcategories
+    {
+        return Ok(await db.Subcategories
             .OrderBy(sc => sc.Name)
             .Select(sc => new SubcategoryDto(sc.Id, sc.Name, sc.CategoryId))
             .ToListAsync());
+    }
 
     [HttpGet("by-category/{categoryId:int}")]
     public async Task<ActionResult<IEnumerable<SubcategoryDto>>> GetByCategory(int categoryId)
-        => Ok(await db.Subcategories
+    {
+        return Ok(await db.Subcategories
             .Where(sc => sc.CategoryId == categoryId)
             .OrderBy(sc => sc.Name)
             .Select(sc => new SubcategoryDto(sc.Id, sc.Name, sc.CategoryId))
             .ToListAsync());
+    }
 
     [HttpPost]
     public async Task<ActionResult<SubcategoryDto>> Create(CreateSubcategoryDto dto)
     {
-        var entity = new Subcategory { Name = dto.Name, CategoryId = dto.CategoryId };
+        var entity = new Subcategory 
+        { 
+            Name = dto.Name, 
+            CategoryId = dto.CategoryId
+        };
         db.Subcategories.Add(entity);
         await db.SaveChangesAsync();
         var result = new SubcategoryDto(entity.Id, entity.Name, entity.CategoryId);

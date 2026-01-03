@@ -1,7 +1,10 @@
 @using Slingcessories.Models
+@using Slingcessories.Services
 @inject HttpClient Http
 @inject IConfiguration Configuration
 @inject IJSRuntime JS
+@inject UserStateService UserStateService
+@implements IDisposable
 
 <PageTitle>@(Wishlist ? "Wishlist" : "Accessories")</PageTitle>
 <h1>@(Wishlist ? "Wishlist" : "Accessories")</h1>
@@ -64,7 +67,6 @@
                                         <strong>Slingshots:</strong> @string.Join(", ", item.SlinghotDescriptions)
                                     </p>
                                 }
-                                <p class="card-text mb-1"><strong>Units:</strong> @item.Units</p>
                                 <p class="card-text mb-2"><strong>Price:</strong> @item.Price.ToString("C")</p>
                             </div>
                             <div class="card-footer bg-transparent border-0 d-flex justify-content-end">
@@ -130,7 +132,7 @@
                                     <strong>@item.Title</strong>
                                     <span class="text-muted ms-2">(@item.Category@(!string.IsNullOrWhiteSpace(item.Subcategory) ? " - " + item.Subcategory : ""))</span>
                                     <div class="text-muted small">
-                                        Units: @item.Units | Price: @item.Price.ToString("C")
+                                        Price: @item.Price.ToString("C")
                                     </div>
                                 </div>
                             </div>
@@ -154,16 +156,23 @@
                             </div>
                         </div>
 
-                        @* Show slingshots for this accessory *@
+                        @* Show slingshots for this accessory with quantities *@
                         @if (expandedAccessories.Contains(item.Id) && item.SlinghotDescriptions != null && item.SlinghotDescriptions.Any())
                         {
                             <div class="mt-2 ms-4">
                                 <h6 class="text-muted">Associated Slingshots:</h6>
                                 <ul class="list-unstyled">
-                                    @foreach (var slingshot in item.SlinghotDescriptions)
+                                    @for (int i = 0; i < item.SlinghotDescriptions.Count; i++)
                                     {
+                                        var description = item.SlinghotDescriptions[i];
+                                        var slingshotId = item.SlinghotQuantities?.Keys.ElementAtOrDefault(i) ?? 0;
+                                        var quantity = item.SlinghotQuantities?.GetValueOrDefault(slingshotId, 0) ?? 0;
                                         <li class="mb-1">
-                                            <span class="bi bi-diagram-3 me-1"></span>@slingshot
+                                            <span class="bi bi-diagram-3 me-1"></span>@description
+                                            @if (quantity > 0)
+                                            {
+                                                <span class="badge bg-primary ms-2">Qty: @quantity</span>
+                                            }
                                         </li>
                                     }
                                 </ul>
@@ -208,15 +217,11 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Units</label>
-                            <input type="number" class="form-control" @bind="createModel.Units" min="0" />
-                        </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label class="form-label">Price</label>
                             <input type="number" class="form-control" @bind="createModel.Price" step="0.01" min="0" />
                         </div>
-                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="createWishlistCheck" @bind="createModel.Wishlist" />
                                 <label class="form-check-label" for="createWishlistCheck">
@@ -250,21 +255,36 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Slingshots</label>
-                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                        <label class="form-label">Slingshots & Quantities</label>
+                        <div class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
                             @if (slingshots.Any())
                             {
                                 @foreach (var sl in slingshots)
                                 {
-                                    <div class="form-check">
-                                        <input class="form-check-input" 
-                                               type="checkbox" 
-                                               id="create_sling_@sl.Id" 
-                                               checked="@(createModel.SlinghotIds != null && createModel.SlinghotIds.Contains(sl.Id))"
-                                               @onchange="@(e => ToggleCreateSlingshot(sl.Id, (bool)e.Value!))" />
-                                        <label class="form-check-label" for="create_sling_@sl.Id">
-                                            @sl.Year @sl.Model (@sl.Color)
-                                        </label>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="create_sling_@sl.Id" 
+                                                       checked="@(createModel.SlinghotQuantities.ContainsKey(sl.Id))"
+                                                       @onchange="@(e => ToggleCreateSlingshot(sl.Id, (bool)e.Value!))" />
+                                                <label class="form-check-label" for="create_sling_@sl.Id">
+                                                    @sl.Year @sl.Model (@sl.Color)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            @if (createModel.SlinghotQuantities.ContainsKey(sl.Id))
+                                            {
+                                                <input type="number" 
+                                                       class="form-control form-control-sm" 
+                                                       min="1" 
+                                                       value="@createModel.SlinghotQuantities[sl.Id]"
+                                                       @oninput="@(e => UpdateCreateQuantity(sl.Id, e.Value?.ToString()))"
+                                                       placeholder="Qty" />
+                                            }
+                                        </div>
                                     </div>
                                 }
                             }
@@ -325,15 +345,11 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Units</label>
-                            <input type="number" class="form-control" @bind="editModel.Units" min="0" />
-                        </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label class="form-label">Price</label>
                             <input type="number" class="form-control" @bind="editModel.Price" step="0.01" min="0" />
                         </div>
-                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="wishlistCheck" @bind="editModel.Wishlist" />
                                 <label class="form-check-label" for="wishlistCheck">
@@ -367,21 +383,36 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Slingshots</label>
-                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                        <label class="form-label">Slingshots & Quantities</label>
+                        <div class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
                             @if (slingshots.Any())
                             {
                                 @foreach (var sl in slingshots)
                                 {
-                                    <div class="form-check">
-                                        <input class="form-check-input" 
-                                               type="checkbox" 
-                                               id="sling_@sl.Id" 
-                                               checked="@(editModel.SlinghotIds != null && editModel.SlinghotIds.Contains(sl.Id))"
-                                               @onchange="@(e => ToggleSlingshot(sl.Id, (bool)e.Value!))" />
-                                        <label class="form-check-label" for="sling_@sl.Id">
-                                            @sl.Year @sl.Model (@sl.Color)
-                                        </label>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="sling_@sl.Id" 
+                                                       checked="@(editModel.SlinghotQuantities.ContainsKey(sl.Id))"
+                                                       @onchange="@(e => ToggleSlingshot(sl.Id, (bool)e.Value!))" />
+                                                <label class="form-check-label" for="sling_@sl.Id">
+                                                    @sl.Year @sl.Model (@sl.Color)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            @if (editModel.SlinghotQuantities.ContainsKey(sl.Id))
+                                            {
+                                                <input type="number" 
+                                                       class="form-control form-control-sm" 
+                                                       min="1" 
+                                                       value="@editModel.SlinghotQuantities[sl.Id]"
+                                                       @oninput="@(e => UpdateEditQuantity(sl.Id, e.Value?.ToString()))"
+                                                       placeholder="Qty" />
+                                            }
+                                        </div>
                                     </div>
                                 }
                             }
@@ -391,16 +422,6 @@
                             }
                         </div>
                     </div>
-
-                    @* Debug info - remove after testing *@
-                    @* <div class="alert alert-info">
-                        <small>
-                            <strong>Debug:</strong> Title="@editModel.Title" (IsWhiteSpace: @string.IsNullOrWhiteSpace(editModel.Title)), 
-                            CategoryId=@editModel.CategoryId, 
-                            isSaving=@isSaving,
-                            Button should be: @((isSaving || string.IsNullOrWhiteSpace(editModel.Title) || editModel.CategoryId <= 0) ? "DISABLED" : "ENABLED")
-                        </small>
-                    </div> *@
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="CancelEdit" disabled="@isSaving">Cancel</button>
@@ -461,6 +482,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to user change events
+        UserStateService.OnUserChanged += HandleUserChanged;
+        
         try
         {
             error = null;
@@ -471,8 +495,10 @@
 
             if (online)
             {
-                // Use relative URL - HttpClient already has BaseAddress set
-                var data = await Http.GetFromJsonAsync<List<Accessory>>($"api/accessories?wishlist={Wishlist.ToString().ToLower()}");
+                // Accessories are shared across all users - no userId filtering
+                var accessoriesUrl = $"api/accessories?wishlist={Wishlist.ToString().ToLower()}";
+               
+                var data = await Http.GetFromJsonAsync<List<Accessory>>(accessoriesUrl);
                 Items = data ?? new List<Accessory>();
 
                 // Cache latest payload offline
@@ -496,6 +522,26 @@
         {
             isLoading = false;
         }
+    }
+
+    private void HandleUserChanged()
+    {
+        // Reload slingshots list when user changes (for associating accessories with slingshots)
+        InvokeAsync(async () =>
+        {
+            try
+            {
+                // Clear and reload slingshots for the new user
+                slingshots.Clear();
+                await LoadSlingshotsAsync();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                error = $"Failed to load slingshots: {ex.Message}";
+                StateHasChanged();
+            }
+        });
     }
 
     /* Delete Accessory */
@@ -545,7 +591,7 @@
     private async Task ShowCreateModal()
     {
         createError = null;
-        createModel = new AccessoryCreateDto { Wishlist = Wishlist }; // Default to current view's wishlist state
+        createModel = new AccessoryCreateDto { Wishlist = Wishlist };
         createSubcategories.Clear();
         showCreateModal = true;
 
@@ -591,18 +637,17 @@
                 return;
             }
 
-            // Map to CreateAccessoryDto expected by API
+            // Map to CreateAccessoryDto expected by API (no userId needed - accessories are shared)
             var payload = new CreateAccessoryPayload
             {
                 Title = createModel.Title.Trim(),
                 PictureUrl = string.IsNullOrWhiteSpace(createModel.PictureUrl) ? null : createModel.PictureUrl.Trim(),
                 Url = string.IsNullOrWhiteSpace(createModel.Url) ? null : createModel.Url.Trim(),
-                Units = createModel.Units,
                 Price = createModel.Price,
                 Wishlist = createModel.Wishlist,
                 CategoryId = createModel.CategoryId,
                 SubcategoryId = createModel.SubcategoryId,
-                SlinghotIds = createModel.SlinghotIds ?? new List<int>()
+                SlinghotQuantities = createModel.SlinghotQuantities
             };
 
             var response = await Http.PostAsJsonAsync("api/accessories", payload);
@@ -656,27 +701,31 @@
 
     private async Task LoadCreateSubcategoriesAsync(int categoryId)
     {
-        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>($"api/categories/{categoryId}/subcategories");
+        var subcategoriesUrl = $"api/categories/{categoryId}/subcategories";
+        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(subcategoriesUrl);
         createSubcategories = data ?? new();
     }
 
     private void ToggleCreateSlingshot(int slinghotId, bool isChecked)
     {
-        if (createModel.SlinghotIds == null)
-        {
-            createModel.SlinghotIds = new List<int>();
-        }
-
         if (isChecked)
         {
-            if (!createModel.SlinghotIds.Contains(slinghotId))
+            if (!createModel.SlinghotQuantities.ContainsKey(slinghotId))
             {
-                createModel.SlinghotIds.Add(slinghotId);
+                createModel.SlinghotQuantities[slinghotId] = 1; // Default quantity
             }
         }
         else
         {
-            createModel.SlinghotIds.Remove(slinghotId);
+            createModel.SlinghotQuantities.Remove(slinghotId);
+        }
+    }
+
+    private void UpdateCreateQuantity(int slinghotId, string? value)
+    {
+        if (int.TryParse(value, out int quantity) && quantity > 0)
+        {
+            createModel.SlinghotQuantities[slinghotId] = quantity;
         }
     }
 
@@ -688,9 +737,6 @@
 
         try
         {
-            // Show debug info about the item being edited
-            System.Diagnostics.Debug.WriteLine($"Opening edit for accessory ID: {item.Id}, Title: {item.Title}");
-
             var online = await JS.InvokeAsync<bool>("indexedDbHelper.isOnline");
             if (!online)
             {
@@ -701,21 +747,13 @@
             await LoadCategoriesAsync();
             await LoadSlingshotsAsync();
 
-            // Use relative URL since HttpClient already has BaseAddress configured
             var getUrl = $"api/accessories/{item.Id}";
-
-            System.Diagnostics.Debug.WriteLine($"Fetching from URL: {getUrl}");
-
-            // Pull full DTO (includes CategoryId/SubcategoryId/SlinghotIds)
             var response = await Http.GetAsync(getUrl);
-            
-            System.Diagnostics.Debug.WriteLine($"Response Status: {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                modalError = $"API Error: {response.StatusCode} ({response.ReasonPhrase})\nURL: {getUrl}\nDetails: {errorContent}";
-                System.Diagnostics.Debug.WriteLine($"API Error: {errorContent}");
+                modalError = $"API Error: {response.StatusCode} ({response.ReasonPhrase})\nDetails: {errorContent}";
                 return;
             }
 
@@ -723,11 +761,8 @@
             if (dto is null)
             {
                 modalError = "Failed to deserialize the accessory data.";
-                System.Diagnostics.Debug.WriteLine("DTO deserialization returned null");
                 return;
             }
-
-            System.Diagnostics.Debug.WriteLine($"Successfully loaded DTO for ID: {dto.Id}");
 
             editModel = dto;
 
@@ -741,7 +776,6 @@
         catch (Exception ex)
         {
             modalError = $"Failed to open editor: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"Exception in OpenEditAsync: {ex}");
         }
     }
 
@@ -770,9 +804,7 @@
                 return;
             }
 
-            // Use relative URL since HttpClient already has BaseAddress configured
             var url = $"api/accessories/{editModel.Id}";
-
             var response = await Http.PutAsJsonAsync(url, editModel);
 
             if (!response.IsSuccessStatusCode)
@@ -785,7 +817,6 @@
             // Apply edits locally for instant UI feedback
             editingItem.Title = editModel.Title;
             editingItem.PictureUrl = editModel.PictureUrl;
-            editingItem.Units = editModel.Units;
             editingItem.Price = editModel.Price;
             editingItem.Url = editModel.Url;
             editingItem.Wishlist = editModel.Wishlist;
@@ -800,10 +831,14 @@
             editingItem.Category = catName ?? editingItem.Category;
             editingItem.Subcategory = subcatName;
 
-            // Update slingshot descriptions
+            // Update slingshot info
             if (editModel.SlinghotDescriptions != null)
             {
                 editingItem.SlinghotDescriptions = editModel.SlinghotDescriptions;
+            }
+            if (editModel.SlinghotQuantities != null)
+            {
+                editingItem.SlinghotQuantities = editModel.SlinghotQuantities;
             }
 
             // Refresh offline cache for current view
@@ -828,15 +863,15 @@
     {
         if (categories.Count > 0) return;
 
-        // Use relative URL - HttpClient already has BaseAddress set
-        var data = await Http.GetFromJsonAsync<List<CategoryOption>>("api/categories");
+        var categoriesUrl = "api/categories";
+        var data = await Http.GetFromJsonAsync<List<CategoryOption>>(categoriesUrl);
         categories = data ?? new();
     }
 
     private async Task LoadSubcategoriesAsync(int categoryId)
     {
-        // Use relative URL - HttpClient already has BaseAddress set
-        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>($"api/categories/{categoryId}/subcategories");
+        var subcategoriesUrl = $"api/categories/{categoryId}/subcategories";
+        var data = await Http.GetFromJsonAsync<List<SubcategoryOption>>(subcategoriesUrl);
         subcategories = data ?? new();
     }
 
@@ -844,8 +879,13 @@
     {
         if (slingshots.Count > 0) return;
 
-        // Use relative URL - HttpClient already has BaseAddress set
-        var data = await Http.GetFromJsonAsync<List<SlingOption>>("api/slingshots");
+        var slingshotsUrl = "api/slingshots";
+        if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            slingshotsUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+        }
+
+        var data = await Http.GetFromJsonAsync<List<SlingOption>>(slingshotsUrl);
         slingshots = data ?? new();
     }
 
@@ -865,21 +905,24 @@
 
     private void ToggleSlingshot(int slinghotId, bool isChecked)
     {
-        if (editModel.SlinghotIds == null)
-        {
-            editModel.SlinghotIds = new List<int>();
-        }
-
         if (isChecked)
         {
-            if (!editModel.SlinghotIds.Contains(slinghotId))
+            if (!editModel.SlinghotQuantities.ContainsKey(slinghotId))
             {
-                editModel.SlinghotIds.Add(slinghotId);
+                editModel.SlinghotQuantities[slinghotId] = 1; // Default quantity
             }
         }
         else
         {
-            editModel.SlinghotIds.Remove(slinghotId);
+            editModel.SlinghotQuantities.Remove(slinghotId);
+        }
+    }
+
+    private void UpdateEditQuantity(int slinghotId, string? value)
+    {
+        if (int.TryParse(value, out int quantity) && quantity > 0)
+        {
+            editModel.SlinghotQuantities[slinghotId] = quantity;
         }
     }
 
@@ -889,11 +932,13 @@
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
     }
+    
     private sealed class SubcategoryOption
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
     }
+    
     private sealed class SlingOption
     {
         public int Id { get; set; }
@@ -902,19 +947,18 @@
         public string Color { get; set; } = string.Empty;
     }
 
-    // Matches server AccessoryDto contract (camelCase over the wire)
+    // Matches server AccessoryDto contract
     private sealed class AccessoryEditDto
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? PictureUrl { get; set; }
-        public int Units { get; set; }
         public decimal Price { get; set; }
         public string? Url { get; set; }
         public bool Wishlist { get; set; }
         public int CategoryId { get; set; }
         public int? SubcategoryId { get; set; }
-        public List<int>? SlinghotIds { get; set; }
+        public Dictionary<int, int> SlinghotQuantities { get; set; } = new();
         
         [System.Text.Json.Serialization.JsonPropertyName("categoryName")]
         public string? CategoryName { get; set; }
@@ -931,27 +975,25 @@
     {
         public string Title { get; set; } = string.Empty;
         public string? PictureUrl { get; set; }
-        public int Units { get; set; }
         public decimal Price { get; set; }
         public string? Url { get; set; }
         public bool Wishlist { get; set; }
         public int CategoryId { get; set; }
         public int? SubcategoryId { get; set; }
-        public List<int>? SlinghotIds { get; set; }
+        public Dictionary<int, int> SlinghotQuantities { get; set; } = new();
     }
 
-    // Payload sent to server (matches CreateAccessoryDto on backend)
+    // Payload sent to server
     private sealed class CreateAccessoryPayload
     {
         public string Title { get; set; } = string.Empty;
         public string? PictureUrl { get; set; }
-        public int Units { get; set; }
         public decimal Price { get; set; }
         public string? Url { get; set; }
         public bool Wishlist { get; set; }
         public int CategoryId { get; set; }
         public int? SubcategoryId { get; set; }
-        public List<int> SlinghotIds { get; set; } = new();
+        public Dictionary<int, int> SlinghotQuantities { get; set; } = new();
     }
 
     private void SetViewMode(ViewMode mode)
@@ -965,5 +1007,10 @@
             expandedAccessories.Remove(accessoryId);
         else
             expandedAccessories.Add(accessoryId);
+    }
+
+    public void Dispose()
+    {
+        UserStateService.OnUserChanged -= HandleUserChanged;
     }
 }

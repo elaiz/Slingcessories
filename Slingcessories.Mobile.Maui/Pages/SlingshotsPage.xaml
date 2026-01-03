@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             xmlns:models="clr-namespace:Slingcessories.Mobile.Maui.Models"
+             x:Class="Slingcessories.Mobile.Maui.Pages.SlingshotsPage"
+             x:DataType="vm:SlingshotsViewModel"
+             Title="Slingshots">
+    
+    <ScrollView Padding="16">
+        <VerticalStackLayout Spacing="16">
+            
+            <!-- Debug info -->
+            <Label Text="{Binding Slingshots.Count, StringFormat='Slingshots Count: {0}'}" 
+                   FontSize="12" 
+                   TextColor="Blue" />
+            <Label Text="{Binding IsLoading, StringFormat='IsLoading: {0}'}" 
+                   FontSize="12" 
+                   TextColor="Blue" />
+            
+            <!-- Create new slingshot form -->
+            <Frame Padding="12" CornerRadius="8" BorderColor="Gray">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*">
+                    <Label Grid.Row="0" Grid.ColumnSpan="2" 
+                           Text="New Slingshot" 
+                           FontSize="16" 
+                           FontAttributes="Bold" 
+                           Margin="0,0,0,8" />
+                    
+                    <Entry Grid.Row="1" Grid.Column="0"
+                           Placeholder="Year"
+                           Text="{Binding NewYear}"
+                           Keyboard="Numeric"
+                           Margin="0,0,4,0" />
+                    
+                    <Entry Grid.Row="1" Grid.Column="1"
+                           Placeholder="Model"
+                           Text="{Binding NewModel}"
+                           Margin="4,0,0,0" />
+                    
+                    <Entry Grid.Row="2" Grid.ColumnSpan="2"
+                           Placeholder="Color"
+                           Text="{Binding NewColor}"
+                           Margin="0,8,0,0" />
+                    
+                    <Button Grid.Row="3" Grid.ColumnSpan="2"
+                            Text="Create Slingshot"
+                            Command="{Binding CreateSlingshotCommand}"
+                            Margin="0,8,0,0" />
+                </Grid>
+            </Frame>
+            
+            <!-- Refresh button -->
+            <Button Text="Refresh" 
+                    Command="{Binding LoadSlingshotsCommand}" />
+
+            <!-- Loading indicator -->
+            <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                             IsVisible="{Binding IsLoading}"
+                             HorizontalOptions="Center" />
+
+            <!-- Error message -->
+            <Label Text="{Binding ErrorMessage}" 
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                   TextColor="Red"
+                   HorizontalOptions="Center"
+                   FontSize="14" />
+
+            <!-- Slingshots list -->
+            <CollectionView ItemsSource="{Binding Slingshots}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:SlinghotDto">
+                        <Frame Margin="0,0,0,10" 
+                               Padding="12" 
+                               CornerRadius="8" 
+                               HasShadow="True"
+                               BorderColor="Gray">
+                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                                
+                                <!-- Year Model -->
+                                <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                       FontSize="18" 
+                                       FontAttributes="Bold">
+                                    <Label.FormattedText>
+                                        <FormattedString>
+                                            <Span Text="{Binding Year}" />
+                                            <Span Text=" " />
+                                            <Span Text="{Binding Model}" />
+                                        </FormattedString>
+                                    </Label.FormattedText>
+                                </Label>
+
+                                <!-- Color -->
+                                <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                       Text="{Binding Color, StringFormat='Color: {0}'}"
+                                       FontSize="14"
+                                       Margin="0,4,0,0" />
+
+                                <!-- Delete button -->
+                                <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                        Text="Delete"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SlingshotsViewModel}}, Path=DeleteSlingshotCommand}"
+                                        CommandParameter="{Binding Id}"
+                                        BackgroundColor="Red"
+                                        TextColor="White"
+                                        Margin="0,8,0,0" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+                
+                <CollectionView.EmptyView>
+                    <ContentView>
+                        <Label Text="No slingshots found. Create one above!" 
+                               HorizontalOptions="Center"
+                               FontSize="16"
+                               Margin="0,16,0,0" />
+                    </ContentView>
+                </CollectionView.EmptyView>
+            </CollectionView>
+            
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+
