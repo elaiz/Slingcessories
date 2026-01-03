@@ -3,6 +3,7 @@
 @using Slingcessories.Services
 @inject HttpClient Http
 @inject UserStateService UserStateService
+@inject PageStateService PageStateService
 @implements IDisposable
 
 <PageTitle>Categories</PageTitle>
@@ -257,6 +258,7 @@ else
     private List<SubcategoryDto> subcategories = [];
     private HashSet<int> expandedCategories = new();
     private bool allExpanded = false;
+    private const string ExpandedCategoriesStateKey = "categories_expanded";
     
     // State
     private bool isLoading = true;
@@ -290,7 +292,15 @@ else
     {
         // Subscribe to user change events
         UserStateService.OnUserChanged += HandleUserChanged;
+        
+        // Load saved expanded state
+        var savedExpandedCategories = await PageStateService.LoadStateAsync<HashSet<int>>(ExpandedCategoriesStateKey, new HashSet<int>());
+        expandedCategories = savedExpandedCategories;
+        
         await LoadAsync();
+        
+        // Update allExpanded state after loading
+        UpdateAllExpandedState();
     }
 
     private void HandleUserChanged()
@@ -351,10 +361,13 @@ else
             }
             allExpanded = true;
         }
+        
+        // Save the state
+        _ = SaveExpandedStateAsync();
     }
 
     /* Helpers */
-    private void ToggleCategory(int categoryId)
+    private async void ToggleCategory(int categoryId)
     {
         if (expandedCategories.Contains(categoryId))
             expandedCategories.Remove(categoryId);
@@ -362,11 +375,19 @@ else
             expandedCategories.Add(categoryId);
         
         UpdateAllExpandedState();
+        
+        // Save the state
+        await SaveExpandedStateAsync();
     }
 
     private void UpdateAllExpandedState()
     {
         allExpanded = categories.Count > 0 && expandedCategories.Count == categories.Count;
+    }
+
+    private async Task SaveExpandedStateAsync()
+    {
+        await PageStateService.SaveStateAsync(ExpandedCategoriesStateKey, expandedCategories);
     }
 
     private int GetSubcategoryCount(int categoryId) 
