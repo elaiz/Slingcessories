@@ -11,18 +11,106 @@ on:
 
 jobs:
   build:
-
+    name: Build API and Run Tests
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
+    
     - name: Restore dependencies
       run: dotnet restore
+    
     - name: Build
       run: dotnet build --no-restore
+    
     - name: Test
       run: dotnet test --no-build --verbosity normal
+
+  build-blazor:
+    name: Build Blazor WebAssembly
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore Slingcessories/Slingcessories.csproj
+    
+    - name: Build Blazor WASM
+      run: dotnet build Slingcessories/Slingcessories.csproj --configuration Release --no-restore
+    
+    - name: Publish Blazor WASM
+      run: dotnet publish Slingcessories/Slingcessories.csproj --configuration Release --no-build --output ./publish
+
+  build-maui-android:
+    name: Build MAUI Android
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+    
+    - name: Install MAUI Workload
+      run: dotnet workload install maui-android --ignore-failed-sources
+    
+    - name: Restore dependencies
+      run: dotnet restore Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj
+    
+    - name: Build MAUI Android
+      run: dotnet build Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj -c Release -f net10.0-android --no-restore
+
+  build-maui-ios:
+    name: Build MAUI iOS
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+    
+    - name: Install MAUI Workload
+      run: dotnet workload install maui-ios --ignore-failed-sources
+    
+    - name: Restore dependencies
+      run: dotnet restore Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj
+    
+    - name: Build MAUI iOS
+      run: dotnet build Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj -c Release -f net10.0-ios --no-restore
+
+  build-maui-windows:
+    name: Build MAUI Windows
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+    
+    - name: Install MAUI Workload
+      run: dotnet workload install maui-windows --ignore-failed-sources
+    
+    - name: Restore dependencies
+      run: dotnet restore Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj
+    
+    - name: Build MAUI Windows
+      run: dotnet build Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj -c Release -f net10.0-windows10.0.19041.0 --no-restore
