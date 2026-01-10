@@ -4,6 +4,7 @@
 @inject HttpClient Http
 @inject UserStateService UserStateService
 @inject PageStateService PageStateService
+@inject OfflineDataService OfflineDataService
 @implements IDisposable
 
 <PageTitle>Categories</PageTitle>
@@ -16,22 +17,30 @@
 
 <h1>Categories & Subcategories</h1>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (!OfflineDataService.IsOnline)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> You're viewing cached data. Create, edit, and delete operations are disabled while offline.
+    </div>
+}
+
 <div class="mb-3 d-flex gap-2">
-    <button class="btn btn-success btn-sm" @onclick="ShowCreateModal">+ New Category</button>
+    <button class="btn btn-success btn-sm" @onclick="ShowCreateModal" disabled="@(!OfflineDataService.IsOnline || saving || isLoading)">+ New Category</button>
     <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleExpandAll">
         <span class="@(allExpanded ? "bi bi-chevron-up" : "bi bi-chevron-down") me-1"></span>
         @(allExpanded ? "Collapse All" : "Expand All")
     </button>
     <button class="btn btn-outline-primary btn-sm"
             @onclick="Reload"
-            disabled="@saving || isLoading">Refresh</button>
+            disabled="@(saving || isLoading)">Refresh</button>
 </div>
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
-else if (isLoading)
+@if (isLoading)
 {
     <p>Loading categories...</p>
 }
@@ -80,10 +89,10 @@ else
                                 <span class="badge bg-secondary">@GetSubcategoryCount(c.Id)</span>
                             </div>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-success" @onclick="() => ShowAddSubcategoryModal(c.Id)">
+                                <button class="btn btn-outline-success" @onclick="() => ShowAddSubcategoryModal(c.Id)" disabled="@(!OfflineDataService.IsOnline)">
                                     <span class="bi bi-plus-circle me-1"></span>Add Subcategory
                                 </button>
-                                <button class="btn btn-outline-secondary" @onclick="() => BeginCategoryEdit(c)">Edit</button>
+                                <button class="btn btn-outline-secondary" @onclick="() => BeginCategoryEdit(c)" disabled="@(!OfflineDataService.IsOnline)">Edit</button>
                                 @if (confirmDeleteCategoryId == c.Id)
                                 {
                                     <button class="btn btn-danger" disabled="@saving" @onclick="() => DeleteCategoryAsync(c.Id)">Confirm</button>
@@ -91,7 +100,7 @@ else
                                 }
                                 else
                                 {
-                                    <button class="btn btn-outline-danger" disabled="@saving" @onclick="() => confirmDeleteCategoryId = c.Id">Delete</button>
+                                    <button class="btn btn-outline-danger" disabled="@(saving || !OfflineDataService.IsOnline)" @onclick="() => confirmDeleteCategoryId = c.Id">Delete</button>
                                 }
                             </div>
                         </div>
@@ -131,7 +140,7 @@ else
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <span>@sc.Name</span>
                                                     <div class="btn-group btn-group-sm">
-                                                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => BeginSubcategoryEdit(sc)">Edit</button>
+                                                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => BeginSubcategoryEdit(sc)" disabled="@(!OfflineDataService.IsOnline)">Edit</button>
                                                         @if (confirmDeleteSubcategoryId == sc.Id)
                                                         {
                                                             <button class="btn btn-danger btn-sm" disabled="@saving" @onclick="() => DeleteSubcategoryAsync(sc.Id)">Confirm</button>
@@ -139,7 +148,7 @@ else
                                                         }
                                                         else
                                                         {
-                                                            <button class="btn btn-outline-danger btn-sm" disabled="@saving" @onclick="() => confirmDeleteSubcategoryId = sc.Id">Delete</button>
+                                                            <button class="btn btn-outline-danger btn-sm" disabled="@(saving || !OfflineDataService.IsOnline)" @onclick="() => confirmDeleteSubcategoryId = sc.Id">Delete</button>
                                                         }
                                                     </div>
                                                 </div>
@@ -292,6 +301,7 @@ else
     {
         // Subscribe to user change events
         UserStateService.OnUserChanged += HandleUserChanged;
+        OfflineDataService.OnlineStatusChanged += HandleNetworkChange;
         
         // Load saved expanded state
         var savedExpandedCategories = await PageStateService.LoadStateAsync<HashSet<int>>(ExpandedCategoriesStateKey, new HashSet<int>());
@@ -309,25 +319,56 @@ else
         InvokeAsync(async () => await LoadAsync());
     }
 
+    private void HandleNetworkChange(bool isOnline)
+    {
+        InvokeAsync(async () =>
+        {
+            if (isOnline)
+            {
+                // Reload fresh data when back online
+                await LoadAsync();
+            }
+            StateHasChanged();
+        });
+    }
+
     private async Task LoadAsync()
     {
         isLoading = true;
         errorMessage = null;
+        
         try
         {
-            // Categories and subcategories are shared across all users - no userId filtering
-            var categoriesUrl = "api/categories";
-            var subcategoriesUrl = "api/subcategories";
+            if (OfflineDataService.IsOnline)
+            {
+                // Online: Fetch from API
+                var categoriesUrl = "api/categories";
+                var subcategoriesUrl = "api/subcategories";
 
-            var catResult = await Http.GetFromJsonAsync<List<CategoryDto>>(categoriesUrl);
-            categories = catResult ?? [];
+                var catResult = await Http.GetFromJsonAsync<List<CategoryDto>>(categoriesUrl);
+                categories = catResult ?? [];
 
-            var subResult = await Http.GetFromJsonAsync<List<SubcategoryDto>>(subcategoriesUrl);
-            subcategories = subResult ?? [];
+                var subResult = await Http.GetFromJsonAsync<List<SubcategoryDto>>(subcategoriesUrl);
+                subcategories = subResult ?? [];
+
+                // Cache the data
+                await OfflineDataService.SetCachedDataAsync("categories_all", categories);
+                await OfflineDataService.SetCachedDataAsync("subcategories_all", subcategories);
+            }
+            else
+            {
+                // Offline: Load from cache
+                categories = await OfflineDataService.GetCachedDataAsync<List<CategoryDto>>("categories_all") ?? [];
+                subcategories = await OfflineDataService.GetCachedDataAsync<List<SubcategoryDto>>("subcategories_all") ?? [];
+            }
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to load data: {ex.Message}";
+            
+            // Try to load from cache on error
+            categories = await OfflineDataService.GetCachedDataAsync<List<CategoryDto>>("categories_all") ?? [];
+            subcategories = await OfflineDataService.GetCachedDataAsync<List<SubcategoryDto>>("subcategories_all") ?? [];
         }
         finally
         {
@@ -399,7 +440,7 @@ else
     /* Category Edit */
     private void BeginCategoryEdit(CategoryDto c)
     {
-        if (saving || savingCreate || savingCreateSubcategory) return;
+        if (saving || savingCreate || savingCreateSubcategory || !OfflineDataService.IsOnline) return;
         editingCategoryId = c.Id;
         editCategoryModel = new CategoryEditModel { Id = c.Id, Name = c.Name };
         confirmDeleteCategoryId = null;
@@ -414,7 +455,7 @@ else
 
     private async Task SaveCategoryEditAsync()
     {
-        if (editCategoryModel is null || editingCategoryId != editCategoryModel.Id) return;
+        if (editCategoryModel is null || editingCategoryId != editCategoryModel.Id || !OfflineDataService.IsOnline) return;
         saving = true;
         errorMessage = null;
 
@@ -427,6 +468,10 @@ else
             {
                 var index = categories.FindIndex(c => c.Id == dto.Id);
                 if (index >= 0) categories[index] = dto;
+                
+                // Update cache
+                await OfflineDataService.SetCachedDataAsync("categories_all", categories);
+                
                 CancelCategoryEdit();
             }
             else
@@ -448,6 +493,8 @@ else
     /* Category Delete */
     private async Task DeleteCategoryAsync(int id)
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         saving = true;
         errorMessage = null;
         try
@@ -459,6 +506,10 @@ else
                 subcategories.RemoveAll(s => s.CategoryId == id);
                 expandedCategories.Remove(id);
                 if (editingCategoryId == id) CancelCategoryEdit();
+                
+                // Update cache
+                await OfflineDataService.SetCachedDataAsync("categories_all", categories);
+                await OfflineDataService.SetCachedDataAsync("subcategories_all", subcategories);
             }
             else
             {
@@ -480,6 +531,8 @@ else
     /* Category Create */
     private void ShowCreateModal()
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         createError = null;
         createCategoryModel = new();
         showCreateCategoryModal = true;
@@ -495,13 +548,14 @@ else
 
     private async Task CreateCategoryAsync()
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         bool success = false;
         savingCreate = true;
         createError = null;
         try
         {
             var trimmed = createCategoryModel.Name.Trim();
-            // Categories are shared - no userId needed
             var payload = new CreateCategoryPayload 
             { 
                 Name = trimmed
@@ -515,6 +569,9 @@ else
                 {
                     categories.Add(created);
                     categories = categories.OrderBy(c => c.Name).ToList();
+                    
+                    // Update cache
+                    await OfflineDataService.SetCachedDataAsync("categories_all", categories);
                 }
                 success = true;
             }
@@ -543,7 +600,7 @@ else
     /* Subcategory Edit */
     private void BeginSubcategoryEdit(SubcategoryDto sc)
     {
-        if (saving || savingCreate || savingCreateSubcategory) return;
+        if (saving || savingCreate || savingCreateSubcategory || !OfflineDataService.IsOnline) return;
         editingSubcategoryId = sc.Id;
         editSubcategoryModel = new SubcategoryEditModel { Id = sc.Id, Name = sc.Name, CategoryId = sc.CategoryId };
         confirmDeleteSubcategoryId = null;
@@ -558,7 +615,7 @@ else
 
     private async Task SaveSubcategoryEditAsync()
     {
-        if (editSubcategoryModel is null || editingSubcategoryId != editSubcategoryModel.Id) return;
+        if (editSubcategoryModel is null || editingSubcategoryId != editSubcategoryModel.Id || !OfflineDataService.IsOnline) return;
         saving = true;
         errorMessage = null;
 
@@ -571,6 +628,10 @@ else
             {
                 var index = subcategories.FindIndex(s => s.Id == dto.Id);
                 if (index >= 0) subcategories[index] = dto;
+                
+                // Update cache
+                await OfflineDataService.SetCachedDataAsync("subcategories_all", subcategories);
+                
                 CancelSubcategoryEdit();
             }
             else
@@ -592,6 +653,8 @@ else
     /* Subcategory Delete */
     private async Task DeleteSubcategoryAsync(int id)
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         saving = true;
         errorMessage = null;
         try
@@ -601,6 +664,9 @@ else
             {
                 subcategories.RemoveAll(s => s.Id == id);
                 if (editingSubcategoryId == id) CancelSubcategoryEdit();
+                
+                // Update cache
+                await OfflineDataService.SetCachedDataAsync("subcategories_all", subcategories);
             }
             else
             {
@@ -622,7 +688,7 @@ else
     /* Subcategory Create */
     private void ShowAddSubcategoryModal(int categoryId)
     {
-        if (saving || savingCreate) return;
+        if (saving || savingCreate || !OfflineDataService.IsOnline) return;
         selectedCategoryId = categoryId;
         createSubcategoryError = null;
         createSubcategoryModel = new();
@@ -644,7 +710,7 @@ else
 
     private async Task CreateSubcategoryAsync()
     {
-        if (!selectedCategoryId.HasValue) return;
+        if (!selectedCategoryId.HasValue || !OfflineDataService.IsOnline) return;
         
         bool success = false;
         savingCreateSubcategory = true;
@@ -652,7 +718,6 @@ else
         try
         {
             var trimmed = createSubcategoryModel.Name.Trim();
-            // Subcategories are shared - no userId needed
             var payload = new CreateSubcategoryPayload 
             { 
                 Name = trimmed, 
@@ -667,6 +732,9 @@ else
                 {
                     subcategories.Add(created);
                     subcategories = subcategories.OrderBy(s => s.Name).ToList();
+                    
+                    // Update cache
+                    await OfflineDataService.SetCachedDataAsync("subcategories_all", subcategories);
                 }
                 success = true;
             }
@@ -744,5 +812,6 @@ else
     public void Dispose()
     {
         UserStateService.OnUserChanged -= HandleUserChanged;
+        OfflineDataService.OnlineStatusChanged -= HandleNetworkChange;
     }
 }

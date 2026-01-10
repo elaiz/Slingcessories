@@ -1,0 +1,51 @@
+@using Slingcessories.Services
+@inject OfflineDataService OfflineDataService
+@implements IDisposable
+
+@if (!OfflineDataService.IsOnline)
+{
+    <div class="offline-indicator alert alert-warning d-flex align-items-center justify-content-between mb-0" role="alert">
+        <div class="d-flex align-items-center">
+            <span class="bi bi-wifi-off me-2"></span>
+            <strong>You're offline.</strong>
+            <span class="ms-2">Some features may be limited. Changes will sync when you reconnect.</span>
+        </div>
+        @if (hasPendingChanges)
+        {
+            <span class="badge bg-warning text-dark">
+                <span class="bi bi-clock-history me-1"></span>
+                Pending changes
+            </span>
+        }
+    </div>
+}
+
+@code {
+    private bool hasPendingChanges = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        OfflineDataService.OnlineStatusChanged += OnNetworkStatusChanged;
+        await CheckPendingChanges();
+    }
+
+    private async void OnNetworkStatusChanged(bool isOnline)
+    {
+        await InvokeAsync(StateHasChanged);
+        if (isOnline)
+        {
+            await CheckPendingChanges();
+        }
+    }
+
+    private async Task CheckPendingChanges()
+    {
+        hasPendingChanges = await OfflineDataService.HasPendingChangesAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        OfflineDataService.OnlineStatusChanged -= OnNetworkStatusChanged;
+    }
+}
