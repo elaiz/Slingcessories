@@ -2,9 +2,9 @@ name: Code Quality
 
 on:
   push:
-    branches: [ main, dev/* ]
+    branches: [ main, master, dev/* ]
   pull_request:
-    branches: [ main, dev/* ]
+    branches: [ main, master, dev/* ]
 
 jobs:
   analyze:
@@ -22,19 +22,26 @@ jobs:
       with:
         dotnet-version: '8.0.x'
     
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Restore dependencies (excluding MAUI)
+      run: |
+        dotnet restore Slingcessories/Slingcessories.csproj
+        dotnet restore Slingcessories.Service/Slingcessories.Service.csproj
+        dotnet restore Slingcessories.Tests/Slingcessories.Tests.csproj
     
-    - name: Build solution
-      run: dotnet build --no-restore
+    - name: Build solution (excluding MAUI)
+      run: |
+        dotnet build Slingcessories/Slingcessories.csproj --no-restore
+        dotnet build Slingcessories.Service/Slingcessories.Service.csproj --no-restore
+        dotnet build Slingcessories.Tests/Slingcessories.Tests.csproj --no-restore
     
     - name: Run code analysis
-      run: dotnet format --verify-no-changes --no-restore
+      run: dotnet format --verify-no-changes --no-restore Slingcessories.Tests/Slingcessories.Tests.csproj
       continue-on-error: true
     
     - name: Check for security vulnerabilities
       run: |
-        dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerable-packages.txt
+        dotnet list Slingcessories/Slingcessories.csproj package --vulnerable --include-transitive 2>&1 | tee vulnerable-packages.txt
+        dotnet list Slingcessories.Service/Slingcessories.Service.csproj package --vulnerable --include-transitive 2>&1 | tee -a vulnerable-packages.txt
         if grep -q "has the following vulnerable packages" vulnerable-packages.txt; then
           echo "?? Vulnerable packages detected!"
           exit 1
@@ -54,11 +61,11 @@ jobs:
         dotnet-version: '8.0.x'
     
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore Slingcessories.Tests/Slingcessories.Tests.csproj
     
     - name: Run tests with coverage
       run: |
-        dotnet test \
+        dotnet test Slingcessories.Tests/Slingccessories.Tests.csproj \
           --configuration Release \
           --collect:"XPlat Code Coverage" \
           --results-directory ./coverage \

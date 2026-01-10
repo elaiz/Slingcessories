@@ -2,13 +2,14 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main, dev/*, feature/* ]
+    branches: [ main, master, dev/*, feature/* ]
   pull_request:
-    branches: [ main, dev/* ]
+    branches: [ main, master, dev/* ]
   workflow_dispatch:
 
 env:
   DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION_MAUI: '10.0.x'
   BUILD_CONFIGURATION: 'Release'
 
 jobs:
@@ -27,7 +28,7 @@ jobs:
       with:
         fetch-depth: 0  # For better test reporting
     
-    - name: Setup .NET
+    - name: Setup .NET 8
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
@@ -40,15 +41,24 @@ jobs:
         restore-path: |
           ~/.nuget/packages
     
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Restore dependencies (excluding MAUI)
+      run: |
+        dotnet restore Slingcessories/Slingcessories.csproj
+        dotnet restore Slingcessories.Service/Slingcessories.Service.csproj
+        dotnet restore Slingcessories.Tests/Slingcessories.Tests.csproj
     
-    - name: Build solution
-      run: dotnet build --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+    - name: Build solution (excluding MAUI)
+      run: |
+        dotnet build Slingcessories/Slingcessories.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+        dotnet build Slingcessories.Service/Slingcessories.Service.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+        dotnet build Slingcessories.Tests/Slingcessories.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
     
     - name: Run unit tests
       run: |
-        dotnet test --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --verbosity normal \
+        dotnet test Slingcessories.Tests/Slingcessories.Tests.csproj \
+          --configuration ${{ env.BUILD_CONFIGURATION }} \
+          --no-build \
+          --verbosity normal \
           --logger "trx;LogFileName=test-results.trx" \
           --logger "html;LogFileName=test-results.html" \
           --collect:"XPlat Code Coverage" \
@@ -94,7 +104,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore Slingcessories/Slingcessories.csproj
     
     - name: Build Blazor WASM
       run: dotnet build Slingcessories/Slingcessories.csproj --configuration ${{ env.BUILD_CONFIGURATION }}
@@ -124,7 +134,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore Slingcessories.Service/Slingcessories.Service.csproj
     
     - name: Build API
       run: dotnet build Slingcessories.Service/Slingcessories.Service.csproj --configuration ${{ env.BUILD_CONFIGURATION }}
@@ -138,6 +148,46 @@ jobs:
         name: api-service
         path: ./publish
         retention-days: 7
+
+  maui-build:
+    name: Build MAUI (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    needs: build-and-test
+    
+    strategy:
+      matrix:
+        include:
+          - platform: Android
+            os: windows-latest
+            target: net10.0-android
+          - platform: iOS
+            os: macos-latest
+            target: net10.0-ios
+          - platform: macOS
+            os: macos-latest
+            target: net10.0-maccatalyst
+          - platform: Windows
+            os: windows-latest
+            target: net10.0-windows10.0.19041.0
+      fail-fast: false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION_MAUI }}
+    
+    - name: Install MAUI Workload
+      run: dotnet workload install maui --source https://api.nuget.org/v3/index.json
+    
+    - name: Restore MAUI dependencies
+      run: dotnet restore Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj
+    
+    - name: Build MAUI (${{ matrix.platform }})
+      run: dotnet build Slingcessories.Mobile.Maui/Slingcessories.Mobile.Maui.csproj --framework ${{ matrix.target }} --configuration ${{ env.BUILD_CONFIGURATION }}
 
   test-summary:
     name: Test Summary
