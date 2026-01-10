@@ -24,6 +24,7 @@ async function onInstall(event) {
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' }));
+
     await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
 }
 
@@ -39,17 +40,76 @@ async function onActivate(event) {
 
 async function onFetch(event) {
     let cachedResponse = null;
-    if (event.request.method === 'GET') {
-        // For all navigation requests, try to serve index.html from cache,
-        // unless that request is for an offline resource.
-        // If you need some URLs to be server-rendered, edit the following check to exclude those URLs
-        const shouldServeIndexHtml = event.request.mode === 'navigate'
-            && !manifestUrlList.some(url => url === event.request.url);
-
-        const request = shouldServeIndexHtml ? 'index.html' : event.request;
-        const cache = await caches.open(cacheName);
-        cachedResponse = await cache.match(request);
+    
+    // For API requests, try network first, fall back to cache
+    if (event.request.url.includes('/api/')) {
+        try {
+            // Try network first
+            const response = await fetch(event.request);
+            
+            // Cache successful GET responses
+            if (event.request.method === 'GET' && response.ok) {
+                const cache = await caches.open(cacheName);
+                cache.put(event.request, response.clone());
+            }
+            
+            return response;
+        } catch (error) {
+            // Network failed, try cache
+            cachedResponse = await caches.match(event.request);
+            if (cachedResponse) {
+                console.log('Service worker: Serving API from cache:', event.request.url);
+                return cachedResponse;
+            }
+            
+            // Return offline response for failed requests
+            return new Response(JSON.stringify({ 
+                error: 'offline', 
+                message: 'You are offline and this data is not cached' 
+            }), {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: new Headers({ 'Content-Type': 'application/json' })
+            });
+        }
     }
 
-    return cachedResponse || fetch(event.request);
+    // For static assets, use cache-first strategy
+    if (event.request.method === 'GET') {
+        // Try cache first
+        cachedResponse = await caches.match(event.request);
+        
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        // Not in cache, try network
+        try {
+            const response = await fetch(event.request);
+            
+            // Cache the response for future use
+            if (response.ok) {
+                const cache = await caches.open(cacheName);
+                cache.put(event.request, response.clone());
+            }
+            
+            return response;
+        } catch (error) {
+            // Network failed and not in cache
+            console.error('Service worker: Fetch failed for:', event.request.url);
+            
+            // Return offline page for navigation requests
+            if (event.request.mode === 'navigate') {
+                cachedResponse = await caches.match('/');
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+            }
+            
+            throw error;
+        }
+    }
+    
+    // For non-GET requests, always use network
+    return fetch(event.request);
 }

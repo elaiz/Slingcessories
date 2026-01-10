@@ -140,3 +140,39 @@ code { color: var(--color-code); font-weight: 500; }
 /* Gear icon */
 .bi-gear-fill, .bi-gear-fill-nav-menu { color: var(--color-navy); }
 .bi-gear-fill:hover, .bi-gear-fill-nav-menu:hover { color: var(--color-navy-accent); }
+
+/* Offline indicator */
+.offline-indicator {
+    position: sticky;
+    top: 0;
+    z-index: 1050;
+    border-radius: 0;
+    border: none;
+    border-bottom: 2px solid #ffc107;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Offline badge pulsing animation */
+.offline-indicator .badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}

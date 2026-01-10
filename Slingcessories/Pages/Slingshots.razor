@@ -4,28 +4,37 @@
 @inject HttpClient Http
 @inject UserStateService UserStateService
 @inject PageStateService PageStateService
+@inject OfflineDataService OfflineDataService
 @implements IDisposable
 
 <PageTitle>Slingshots</PageTitle>
 
 <h1>Slingshots</h1>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (!OfflineDataService.IsOnline)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> You're viewing cached data. Create, edit, and delete operations are disabled while offline.
+    </div>
+}
+
 <div class="mb-3 d-flex gap-2">
-    <button class="btn btn-success btn-sm" @onclick="ShowCreateModal">+ New Slingshot</button>
+    <button class="btn btn-success btn-sm" @onclick="ShowCreateModal" disabled="@(!OfflineDataService.IsOnline || saving || isLoading)">+ New Slingshot</button>
     <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleExpandAll">
         <span class="@(allExpanded ? "bi bi-chevron-up" : "bi bi-chevron-down") me-1"></span>
         @(allExpanded ? "Collapse All" : "Expand All")
     </button>
     <button class="btn btn-outline-primary btn-sm"
             @onclick="Reload"
-            disabled="@saving || isLoading">Refresh</button>
+            disabled="@(saving || isLoading)">Refresh</button>
 </div>
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
-else if (isLoading)
+@if (isLoading)
 {
     <p>Loading slingshots...</p>
 }
@@ -98,7 +107,7 @@ else
                                     <span class="bi bi-@(expandedAccessories.Contains(s.Id) ? "eye-slash" : "eye") me-1"></span>
                                     @(expandedAccessories.Contains(s.Id) ? "Hide" : "Show") Accessories
                                 </button>
-                                <button class="btn btn-outline-secondary" @onclick="() => BeginEdit(s)">Edit</button>
+                                <button class="btn btn-outline-secondary" @onclick="() => BeginEdit(s)" disabled="@(!OfflineDataService.IsOnline)">Edit</button>
                                 @if (confirmDeleteId == s.Id)
                                 {
                                     <button class="btn btn-danger" disabled="@saving" @onclick="() => DeleteAsync(s.Id)">Confirm</button>
@@ -106,7 +115,7 @@ else
                                 }
                                 else
                                 {
-                                    <button class="btn btn-outline-danger" disabled="@saving" @onclick="() => confirmDeleteId = s.Id">Delete</button>
+                                    <button class="btn btn-outline-danger" disabled="@(saving || !OfflineDataService.IsOnline)" @onclick="() => confirmDeleteId = s.Id">Delete</button>
                                 }
                             </div>
                         </div>
@@ -118,7 +127,7 @@ else
                             <div class="mt-2 ms-4">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <h6 class="text-muted mb-0">Associated Accessories:</h6>
-                                    <button class="btn btn-sm btn-success" @onclick="() => ShowAddAccessoriesModal(s.Id)">
+                                    <button class="btn btn-sm btn-success" @onclick="() => ShowAddAccessoriesModal(s.Id)" disabled="@(!OfflineDataService.IsOnline)">
                                         <span class="bi bi-plus-circle me-1"></span>Add Accessories
                                     </button>
                                 </div>
@@ -382,6 +391,7 @@ else
     {
         // Subscribe to user change events
         UserStateService.OnUserChanged += HandleUserChanged;
+        OfflineDataService.OnlineStatusChanged += HandleNetworkChange;
         
         // Load saved expansion states
         expandedAccessories = await PageStateService.LoadStateAsync<HashSet<int>>(ExpandedAccessoriesStateKey, new HashSet<int>());
@@ -397,30 +407,64 @@ else
         InvokeAsync(async () => await LoadAsync());
     }
 
+    private void HandleNetworkChange(bool isOnline)
+    {
+        InvokeAsync(async () =>
+        {
+            if (isOnline)
+            {
+                // Reload fresh data when back online
+                await LoadAsync();
+            }
+            StateHasChanged();
+        });
+    }
+
     private async Task LoadAsync()
     {
         isLoading = true;
         errorMessage = null;
+        
         try
         {
-            // Build URLs - only slingshots are filtered by userId
-            var slingshotUrl = "api/slingshots";
-            var accessoryUrl = "api/accessories"; // Accessories are shared, no userId needed
-            
-            if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+            if (OfflineDataService.IsOnline)
             {
-                slingshotUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+                // Online: Fetch from API
+                var slingshotUrl = "api/slingshots";
+                var accessoryUrl = "api/accessories";
+                
+                if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+                {
+                    slingshotUrl += $"?userId={Uri.EscapeDataString(UserStateService.CurrentUserId)}";
+                }
+
+                var slingshotResult = await Http.GetFromJsonAsync<List<SlinghotDto>>(slingshotUrl);
+                slingshots = slingshotResult ?? [];
+
+                var accessoryResult = await Http.GetFromJsonAsync<List<AccessoryInfoDto>>(accessoryUrl);
+                accessories = accessoryResult ?? [];
+
+                // Cache the data
+                var cacheKey = $"slingshots_{UserStateService.CurrentUserId}";
+                await OfflineDataService.SetCachedDataAsync(cacheKey, slingshots);
+                await OfflineDataService.SetCachedDataAsync("accessories_all", accessories);
             }
-
-            var slingshotResult = await Http.GetFromJsonAsync<List<SlinghotDto>>(slingshotUrl);
-            slingshots = slingshotResult ?? [];
-
-            var accessoryResult = await Http.GetFromJsonAsync<List<AccessoryInfoDto>>(accessoryUrl);
-            accessories = accessoryResult ?? [];
+            else
+            {
+                // Offline: Load from cache
+                var cacheKey = $"slingshots_{UserStateService.CurrentUserId}";
+                slingshots = await OfflineDataService.GetCachedDataAsync<List<SlinghotDto>>(cacheKey) ?? [];
+                accessories = await OfflineDataService.GetCachedDataAsync<List<AccessoryInfoDto>>("accessories_all") ?? [];
+            }
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to load slingshots: {ex.Message}";
+            
+            // Try to load from cache on error
+            var cacheKey = $"slingshots_{UserStateService.CurrentUserId}";
+            slingshots = await OfflineDataService.GetCachedDataAsync<List<SlinghotDto>>(cacheKey) ?? [];
+            accessories = await OfflineDataService.GetCachedDataAsync<List<AccessoryInfoDto>>("accessories_all") ?? [];
         }
         finally
         {
@@ -608,6 +652,7 @@ else
             <div class="btn-group btn-group-sm">
                 <button class="btn btn-outline-primary btn-sm" 
                         @onclick="() => ShowEditQuantityModal(slingshotId, acc.Id, quantity)"
+                        disabled="@(!OfflineDataService.IsOnline)"
                         title="Edit Quantity">
                     <span class="bi bi-pencil"></span>
                 </button>
@@ -627,7 +672,7 @@ else
                 else
                 {
                     <button class="btn btn-outline-danger btn-sm" 
-                            disabled="@removingAccessory" 
+                            disabled="@(removingAccessory || !OfflineDataService.IsOnline)" 
                             @onclick="() => confirmRemoveAccessoryId = (slingshotId, acc.Id)"
                             title="Remove">
                         <span class="bi bi-trash"></span>
@@ -647,7 +692,7 @@ else
     /* Edit */
     private void BeginEdit(SlinghotDto s)
     {
-        if (saving || savingCreate) return;
+        if (saving || savingCreate || !OfflineDataService.IsOnline) return;
         editingId = s.Id;
         editModel = new SlinghotEditModel { Id = s.Id, Year = s.Year, Model = s.Model, Color = s.Color };
         confirmDeleteId = null;
@@ -662,20 +707,24 @@ else
 
     private async Task SaveEditAsync()
     {
-        if (editingId != editModel.Id) return;
+        if (editingId != editModel.Id || !OfflineDataService.IsOnline) return;
         saving = true;
         errorMessage = null;
 
         try
         {
             var dto = new SlinghotDto(editModel.Id, editModel.Year, editModel.Model.Trim(), editModel.Color.Trim());
-            // Use relative URL
             var response = await Http.PutAsJsonAsync($"api/slingshots/{dto.Id}", dto);
 
             if (response.IsSuccessStatusCode)
             {
                 var index = slingshots.FindIndex(s => s.Id == dto.Id);
                 if (index >= 0) slingshots[index] = dto;
+                
+                // Update cache
+                var cacheKey = $"slingshots_{UserStateService.CurrentUserId}";
+                await OfflineDataService.SetCachedDataAsync(cacheKey, slingshots);
+                
                 CancelEdit();
             }
             else
@@ -697,17 +746,22 @@ else
     /* Delete */
     private async Task DeleteAsync(int id)
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         saving = true;
         errorMessage = null;
         try
         {
-            // Use relative URL
             var response = await Http.DeleteAsync($"api/slingshots/{id}");
             if (response.IsSuccessStatusCode)
             {
                 slingshots.RemoveAll(s => s.Id == id);
                 if (editingId == id) CancelEdit();
                 expandedAccessories.Remove(id);
+                
+                // Update cache
+                var cacheKey = $"slingshots_{UserStateService.CurrentUserId}";
+                await OfflineDataService.SetCachedDataAsync(cacheKey, slingshots);
             }
             else
             {
@@ -729,6 +783,8 @@ else
     /* Create */
     private void ShowCreateModal()
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         createError = null;
         createModel = new() { Year = DateTime.Now.Year };
         showCreateModal = true;
@@ -744,6 +800,8 @@ else
 
     private async Task CreateAsync()
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         bool success = false;
         savingCreate = true;
         createError = null;
@@ -763,7 +821,6 @@ else
                 Color = createModel.Color.Trim(),
                 UserId = UserStateService.CurrentUserId
             };
-            // Use relative URL
             var response = await Http.PostAsJsonAsync("api/slingshots", payload);
 
             if (response.IsSuccessStatusCode)
@@ -776,6 +833,10 @@ else
                         .OrderBy(s => s.Year)
                         .ThenBy(s => s.Model)
                         .ToList();
+                    
+                    // Update cache
+                    var cacheKey = $"slingshots_{UserStateService.CurrentUserId}";
+                    await OfflineDataService.SetCachedDataAsync(cacheKey, slingshots);
                 }
                 success = true;
             }
@@ -804,6 +865,8 @@ else
     /* Add Accessories to Slingshot */
     private void ShowAddAccessoriesModal(int slingshotId)
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         selectedSlingshotId = slingshotId;
         selectedAccessories.Clear();
         addAccessoriesError = null;
@@ -843,6 +906,8 @@ else
 
     private async Task AddAccessoriesAsync()
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         addingAccessories = true;
         addAccessoriesError = null;
 
@@ -895,6 +960,8 @@ else
     /* Edit Accessory Quantity */
     private void ShowEditQuantityModal(int slingshotId, int accessoryId, int currentQuantity)
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         editSlingshotId = slingshotId;
         editAccessoryId = accessoryId;
         editQuantityValue = currentQuantity;
@@ -911,6 +978,8 @@ else
 
     private async Task UpdateQuantityAsync()
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         updatingQuantity = true;
         editQuantityError = null;
 
@@ -963,6 +1032,8 @@ else
     /* Remove Accessory from Slingshot */
     private async Task RemoveAccessoryAsync(int slingshotId, int accessoryId)
     {
+        if (!OfflineDataService.IsOnline) return;
+        
         removingAccessory = true;
         errorMessage = null;
 
@@ -1015,6 +1086,7 @@ else
     public void Dispose()
     {
         UserStateService.OnUserChanged -= HandleUserChanged;
+        OfflineDataService.OnlineStatusChanged -= HandleNetworkChange;
     }
 
     /* Records / Models */

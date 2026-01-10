@@ -3,6 +3,7 @@
 @using Slingcessories.Services
 @inject UserStateService UserStateService
 @inject UserService UserService
+@inject OfflineDataService OfflineDataService
 @implements IDisposable
 
 <div class="page">
@@ -66,6 +67,9 @@
             </div>
         </div>
 
+        <!-- Offline Indicator -->
+        <OfflineIndicator />
+
         <article class="content px-4">
             @Body
         </article>
@@ -83,6 +87,7 @@
     protected override async Task OnInitializedAsync()
     {
         UserStateService.OnUserChanged += HandleUserChanged;
+        await OfflineDataService.InitializeAsync();
         await LoadCurrentUser();
     }
 

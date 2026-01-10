@@ -3,11 +3,19 @@
 @inject UserStateService UserStateService
 @inject UserService UserService
 @inject NavigationManager Navigation
+@inject OfflineDataService OfflineDataService
 @implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
 <h1>Slingcessories!</h1>
+
+@if (!string.IsNullOrEmpty(loadError))
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @loadError
+    </div>
+}
 
 @if (isLoading)
 {
@@ -25,9 +33,15 @@ else if (users == null || !users.Any())
         <p class="mb-3">
             <strong>To get started:</strong> Please register an account to begin managing your slingshots and accessories.
         </p>
-        <button class="btn btn-primary" @onclick="GoToRegistration">
+        <button class="btn btn-primary" @onclick="GoToRegistration" disabled="@(!OfflineDataService.IsOnline)">
             <i class="bi bi-person-plus"></i> Register Now
         </button>
+        @if (!OfflineDataService.IsOnline)
+        {
+            <p class="text-muted small mt-2">
+                <i class="bi bi-wifi-off"></i> You need to be online to register.
+            </p>
+        }
     </div>
 }
 else if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
@@ -50,7 +64,7 @@ else if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
         </div>
         
         <p class="mb-0">
-            Or <button class="btn btn-link p-0 align-baseline" @onclick="GoToRegistration">register a new account</button>
+            Or <button class="btn btn-link p-0 align-baseline" @onclick="GoToRegistration" disabled="@(!OfflineDataService.IsOnline)">register a new account</button>
         </p>
     </div>
 }
@@ -102,19 +116,58 @@ else
 @code {
     private List<UserDto>? users;
     private bool isLoading = true;
+    private string? loadError;
 
     protected override async Task OnInitializedAsync()
     {
         UserStateService.OnUserChanged += HandleUserChanged;
+        OfflineDataService.OnlineStatusChanged += HandleNetworkChange;
         await LoadUsers();
     }
 
     private async Task LoadUsers()
     {
         isLoading = true;
-        users = await UserService.GetAllUsersAsync();
-        isLoading = false;
-        StateHasChanged();
+        loadError = null;
+        
+        try
+        {
+            if (OfflineDataService.IsOnline)
+            {
+                // Try to fetch from API
+                users = await UserService.GetAllUsersAsync();
+                
+                // Cache the users list
+                await OfflineDataService.SetCachedDataAsync("users_list", users);
+            }
+            else
+            {
+                // Load from cache when offline
+                users = await OfflineDataService.GetCachedDataAsync<List<UserDto>>("users_list");
+                
+                if (users == null || !users.Any())
+                {
+                    loadError = "You're offline and no cached users are available.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading users: {ex.Message}");
+            
+            // Try to load from cache on error
+            users = await OfflineDataService.GetCachedDataAsync<List<UserDto>>("users_list");
+            
+            if (users == null || !users.Any())
+            {
+                loadError = "Unable to load users. Please check your connection.";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task OnUserSelected(ChangeEventArgs e)
@@ -132,6 +185,19 @@ else
         StateHasChanged();
     }
 
+    private void HandleNetworkChange(bool isOnline)
+    {
+        InvokeAsync(async () =>
+        {
+            if (isOnline)
+            {
+                // Reload fresh data when back online
+                await LoadUsers();
+            }
+            StateHasChanged();
+        });
+    }
+
     private void GoToRegistration()
     {
         Navigation.NavigateTo("/register");
@@ -140,5 +206,6 @@ else
     public void Dispose()
     {
         UserStateService.OnUserChanged -= HandleUserChanged;
+        OfflineDataService.OnlineStatusChanged -= HandleNetworkChange;
     }
 }

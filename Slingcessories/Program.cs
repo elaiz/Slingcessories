@@ -17,5 +17,6 @@ builder.Services.AddScoped(_ => new HttpClient
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserStateService>();
 builder.Services.AddScoped<PageStateService>();
+builder.Services.AddScoped<OfflineDataService>();
 
 await builder.Build().RunAsync();
