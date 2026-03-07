@@ -3,11 +3,13 @@ import '../theme/app_theme.dart';
 
 class PageHeader extends StatelessWidget {
   final String title;
+  final IconData? icon;
   final List<Widget>? actions;
 
   const PageHeader({
     super.key,
     required this.title,
+    this.icon,
     this.actions,
   });
 
@@ -30,6 +32,10 @@ class PageHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (icon != null) ...[
+            Icon(icon, color: AppColors.accentAmber, size: 28),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Text(
               title,

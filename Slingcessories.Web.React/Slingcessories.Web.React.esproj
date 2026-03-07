@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.1184077">
+  <PropertyGroup>
+    <StartupCommand>npm run dev</StartupCommand>
+    <JavaScriptTestFramework>Jasmine</JavaScriptTestFramework>
+    <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
+    <BuildCommandWorkingDirectory>$(MSBuildProjectDirectory)</BuildCommandWorkingDirectory>
+    <ShouldRunBuildScript>true</ShouldRunBuildScript>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="src\**" />
+    <None Include="public\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".vscode\launch.json" />
+  </ItemGroup>
+</Project>

@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Slingcessories.Mobile.Maui"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Slingcessories.Tests", "Slingcessories.Tests\Slingcessories.Tests.csproj", "{704B962A-4F7D-48A4-A070-1C3682903007}"
 EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "Slingcessories.Web.React", "Slingcessories.Web.React\Slingcessories.Web.React.esproj", "{D06DA0F5-4C95-B50F-2B60-024E67870283}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,24 @@ Global
 		{704B962A-4F7D-48A4-A070-1C3682903007}.Release|x64.Build.0 = Release|Any CPU
 		{704B962A-4F7D-48A4-A070-1C3682903007}.Release|x86.ActiveCfg = Release|Any CPU
 		{704B962A-4F7D-48A4-A070-1C3682903007}.Release|x86.Build.0 = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|x64.Build.0 = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|x64.Deploy.0 = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|x86.Build.0 = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Debug|x86.Deploy.0 = Debug|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|x64.ActiveCfg = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|x64.Build.0 = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|x64.Deploy.0 = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|x86.ActiveCfg = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|x86.Build.0 = Release|Any CPU
+		{D06DA0F5-4C95-B50F-2B60-024E67870283}.Release|x86.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

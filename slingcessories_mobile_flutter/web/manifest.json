@@ -1,11 +1,11 @@
 {
-    "name": "slingcessories_mobile_flutter",
-    "short_name": "slingcessories_mobile_flutter",
+    "name": "Home Video Streamer",
+    "short_name": "Home Video Streamer",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Home Video Streamer.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
