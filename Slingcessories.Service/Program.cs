@@ -20,13 +20,20 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
+// Database provider configuration
+var dbProviderName = builder.Configuration.GetValue<string>("DatabaseProvider") ?? "SqlServer";
+var dbProvider = Enum.Parse<DatabaseProvider>(dbProviderName);
+var connectionString = builder.Configuration.GetConnectionString(dbProviderName)
+    ?? throw new InvalidOperationException($"Connection string '{dbProviderName}' not found.");
+var strategy = DatabaseProviderFactory.Create(dbProvider);
+
 // Add DbContext Factory for GraphQL
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    strategy.Configure(options, connectionString));
 
 // Add pooled DbContext for HotChocolate
 builder.Services.AddPooledDbContextFactory<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    strategy.Configure(options, connectionString));
 
 // GraphQL
 builder.Services
