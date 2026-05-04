@@ -33,6 +33,9 @@ else if (users == null || !users.Any())
         <p class="mb-3">
             <strong>To get started:</strong> Please register an account to begin managing your slingshots and accessories.
         </p>
+        <p>
+            If you already have an account, <a href="/login">login here</a>.
+        </p>
         <button class="btn btn-primary" @onclick="GoToRegistration" disabled="@(!OfflineDataService.IsOnline)">
             <i class="bi bi-person-plus"></i> Register Now
         </button>
@@ -63,9 +66,7 @@ else if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
             </select>
         </div>
         
-        <p class="mb-0">
-            Or <button class="btn btn-link p-0 align-baseline" @onclick="GoToRegistration" disabled="@(!OfflineDataService.IsOnline)">register a new account</button>
-        </p>
+        <p class="mb-0">Or <a href="/login">login with email and password</a></p>
     </div>
 }
 else

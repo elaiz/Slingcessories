@@ -5,6 +5,7 @@
     xmlns:converters="clr-namespace:Slingcessories.Mobile.Maui.Converters">
 
     <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+    <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
 
     <Style TargetType="ActivityIndicator">
         <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />

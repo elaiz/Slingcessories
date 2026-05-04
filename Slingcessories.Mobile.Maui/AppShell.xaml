@@ -7,30 +7,39 @@
     Title="Slingcessories"
     FlyoutBackgroundColor="#f8f9fa">
 
-    <TabBar>
+    <ShellContent
+        Title="Login"
+        Icon="dotnet_bot.png"
+        ContentTemplate="{DataTemplate pages:LoginPage}"
+        Route="LoginPage"
+        FlyoutItemIsVisible="False" />
+
+    <FlyoutItem Title="Accessories" Icon="dotnet_bot.png" Route="AccessoriesRoot">
         <ShellContent
             Title="Accessories"
-            Icon="dotnet_bot.png"
             ContentTemplate="{DataTemplate pages:AccessoriesPage}"
             Route="AccessoriesPage" />
+    </FlyoutItem>
 
+    <FlyoutItem Title="Slingshots" Icon="dotnet_bot.png" Route="SlingshotsRoot">
         <ShellContent
             Title="Slingshots"
-            Icon="dotnet_bot.png"
             ContentTemplate="{DataTemplate pages:SlingshotsPage}"
             Route="SlingshotsPage" />
+    </FlyoutItem>
 
+    <FlyoutItem Title="Categories" Icon="dotnet_bot.png" Route="CategoriesRoot">
         <ShellContent
             Title="Categories"
-            Icon="dotnet_bot.png"
             ContentTemplate="{DataTemplate pages:CategoriesPage}"
             Route="CategoriesPage" />
+    </FlyoutItem>
 
+    <FlyoutItem Title="Settings" Icon="dotnet_bot.png" Route="SettingsRoot">
         <ShellContent
             Title="Settings"
-            Icon="dotnet_bot.png"
             ContentTemplate="{DataTemplate pages:SettingsPage}"
             Route="SettingsPage" />
-    </TabBar>
+    </FlyoutItem>
 
 </Shell>

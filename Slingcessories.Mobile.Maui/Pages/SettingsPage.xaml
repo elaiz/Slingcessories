@@ -29,6 +29,8 @@
                 </VerticalStackLayout>
             </Frame>
 
+            <Button Text="Logout" Command="{Binding GoToLoginCommand}" />
+
             <Frame Padding="12" CornerRadius="8" BorderColor="Gray">
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Create New User" FontSize="16" FontAttributes="Bold" />

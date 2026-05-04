@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Slingcessories.Mobile.Maui.ViewModels"
+             x:Class="Slingcessories.Mobile.Maui.Pages.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             Title="Login">
+    <ScrollView Padding="16">
+        <VerticalStackLayout Spacing="12">
+            <Label Text="Login" FontSize="24" FontAttributes="Bold" />
+            <Entry Placeholder="Email" Keyboard="Email" Text="{Binding Email}" />
+            <Entry Placeholder="Password" IsPassword="True" Text="{Binding Password}" />
+
+            <Button Text="Login" Command="{Binding LoginCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}" />
+            <Button Text="Forgot Password" Command="{Binding ForgotPasswordCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}" />
+
+            <VerticalStackLayout IsVisible="{Binding ShowReset}" Spacing="8">
+                <Label Text="Reset Password" FontAttributes="Bold" />
+                <Entry Placeholder="Reset Token" Text="{Binding Token}" />
+                <Entry Placeholder="New Password" IsPassword="True" Text="{Binding NewPassword}" />
+                <Button Text="Submit Reset" Command="{Binding ResetPasswordCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}" />
+            </VerticalStackLayout>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding Message}" TextColor="Red" />
+        </VerticalStackLayout>
+    </ScrollView>can
+</ContentPage>

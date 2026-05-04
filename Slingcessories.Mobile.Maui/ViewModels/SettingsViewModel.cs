@@ -10,6 +10,7 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly ApiService _apiService;
     private readonly UserStateService _userStateService;
+    private readonly AuthService _authService;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -31,10 +32,11 @@ public partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<UserDto> Users { get; } = new();
 
-    public SettingsViewModel(ApiService apiService, UserStateService userStateService)
+    public SettingsViewModel(ApiService apiService, UserStateService userStateService, AuthService authService)
     {
         _apiService = apiService;
         _userStateService = userStateService;
+        _authService = authService;
     }
 
     [RelayCommand]
@@ -112,5 +114,13 @@ public partial class SettingsViewModel : ObservableObject
         
         _userStateService.CurrentUserId = user.Id;
         CurrentUser = user;
+    }
+
+    [RelayCommand]
+    public async Task GoToLoginAsync()
+    {
+        _authService.Logout();
+        _userStateService.CurrentUserId = null;
+        await Shell.Current.GoToAsync("//LoginPage");
     }
 }

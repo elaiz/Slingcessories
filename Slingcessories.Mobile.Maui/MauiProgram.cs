@@ -48,8 +48,8 @@ public static class MauiProgram
 		// Register UserStateService as singleton (shared across app)
 		builder.Services.AddSingleton<UserStateService>();
 
-		// Register HttpClient and ApiService
-		builder.Services.AddHttpClient<ApiService>(client =>
+       // Register shared auth HttpClient for identity endpoints
+		builder.Services.AddHttpClient<AuthService>(client =>
 		{
 			client.BaseAddress = new Uri(apiBaseUrl);
 		})
@@ -67,6 +67,28 @@ public static class MauiProgram
 					return errors == SslPolicyErrors.None;
 				};
 #endif
+         return handler;
+			});
+
+		// Register HttpClient and ApiService
+		builder.Services.AddHttpClient<ApiService>(client =>
+		{
+			client.BaseAddress = new Uri(apiBaseUrl);
+		})
+			.ConfigurePrimaryHttpMessageHandler(() =>
+			{
+				var handler = new HttpClientHandler();
+#if DEBUG
+				// Bypass SSL certificate validation for localhost in development
+				handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+				{
+					if (message.RequestUri?.Host == "localhost"
+						|| message.RequestUri?.Host == "127.0.0.1"
+						|| message.RequestUri?.Host == "10.0.2.2")
+						return true;
+					return errors == SslPolicyErrors.None;
+				};
+#endif
 				return handler;
 			});
 
@@ -75,12 +97,14 @@ public static class MauiProgram
 		builder.Services.AddTransient<CategoriesViewModel>();
 		builder.Services.AddTransient<SlingshotsViewModel>();
 		builder.Services.AddTransient<SettingsViewModel>();
+		builder.Services.AddTransient<LoginViewModel>();
 
 		// Register Pages
 		builder.Services.AddTransient<AccessoriesPage>();
 		builder.Services.AddTransient<CategoriesPage>();
 		builder.Services.AddTransient<SlingshotsPage>();
 		builder.Services.AddTransient<SettingsPage>();
+		builder.Services.AddTransient<LoginPage>();
 
 		return builder.Build();
 	}

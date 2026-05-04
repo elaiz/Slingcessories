@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Slingcessories.Service.Models;
 
 namespace Slingcessories.Service.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<IdentityUser>(options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Category> Categories => Set<Category>();
@@ -15,6 +17,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<IdentityUser>()
+            .Property(u => u.SecurityStamp)
+            .IsRequired();
+
+        modelBuilder.Entity<IdentityUser>()
+            .Property(u => u.ConcurrencyStamp)
+            .IsRequired();
 
         // User configuration
         modelBuilder.Entity<User>()
