@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Slingcessories.Service.Data;
@@ -6,6 +7,7 @@ using Slingcessories.Service.Models;
 
 namespace Slingcessories.Service.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class SlingshotsController(AppDbContext db) : ControllerBase

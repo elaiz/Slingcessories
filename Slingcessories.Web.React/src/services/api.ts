@@ -1,6 +1,8 @@
 import { Accessory, CreateAccessory } from '../types';
+import { getAuthHeader, setAuthToken } from '../auth';
 
 const API_BASE_URL = '/api';
+const CLIENT_ID = 'Slingcessories.React';
 
 export const accessoriesApi = {
   getAll: async (wishlist?: boolean): Promise<Accessory[]> => {
@@ -10,7 +12,11 @@ export const accessoriesApi = {
     }
     
     const url = `${API_BASE_URL}/accessories${params.toString() ? '?' + params.toString() : ''}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        ...getAuthHeader(),
+      },
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch accessories');
@@ -20,7 +26,11 @@ export const accessoriesApi = {
   },
 
   getById: async (id: number): Promise<Accessory> => {
-    const response = await fetch(`${API_BASE_URL}/accessories/${id}`);
+    const response = await fetch(`${API_BASE_URL}/accessories/${id}`, {
+      headers: {
+        ...getAuthHeader(),
+      },
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch accessory');
@@ -34,6 +44,7 @@ export const accessoriesApi = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeader(),
       },
       body: JSON.stringify(accessory),
     });
@@ -50,6 +61,7 @@ export const accessoriesApi = {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeader(),
       },
       body: JSON.stringify(accessory),
     });
@@ -62,10 +74,76 @@ export const accessoriesApi = {
   delete: async (id: number): Promise<void> => {
     const response = await fetch(`${API_BASE_URL}/accessories/${id}`, {
       method: 'DELETE',
+      headers: {
+        ...getAuthHeader(),
+      },
     });
     
     if (!response.ok) {
       throw new Error('Failed to delete accessory');
     }
+  },
+};
+
+type AuthResponse = {
+  token: string;
+  expiresAtUtc: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+};
+
+type ForgotPasswordResponse = {
+  message: string;
+  resetToken?: string;
+};
+
+export const authApi = {
+  login: async (email: string, password: string): Promise<boolean> => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, clientId: CLIENT_ID }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const payload = (await response.json()) as AuthResponse;
+    setAuthToken(payload.token);
+    return true;
+  },
+
+  forgotPassword: async (email: string): Promise<string | null> => {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to request password reset');
+    }
+
+    const payload = (await response.json()) as ForgotPasswordResponse;
+    return payload.resetToken ?? null;
+  },
+
+  resetPassword: async (email: string, token: string, newPassword: string): Promise<boolean> => {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, token, newPassword }),
+    });
+
+    return response.ok;
   },
 };

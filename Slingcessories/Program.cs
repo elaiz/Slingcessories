@@ -15,6 +15,7 @@ builder.Services.AddScoped(_ => new HttpClient
 
 // Register services
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserStateService>();
 builder.Services.AddScoped<PageStateService>();
 builder.Services.AddScoped<OfflineDataService>();

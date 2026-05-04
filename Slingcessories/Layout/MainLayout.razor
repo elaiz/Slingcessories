@@ -1,27 +1,35 @@
 ﻿@inherits LayoutComponentBase
 @using Slingcessories.Components
 @using Slingcessories.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
 @inject UserStateService UserStateService
 @inject UserService UserService
 @inject OfflineDataService OfflineDataService
 @implements IDisposable
 
 <div class="page">
-    <div class="sidebar @(sidebarOpen ? "sidebar-open" : "")">
-        <NavMenu />
-    </div>
-
-    @if (sidebarOpen)
+    @if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
     {
-        <div class="sidebar-overlay" @onclick="CloseSidebar"></div>
+        <div class="sidebar @(sidebarOpen ? "sidebar-open" : "")">
+            <NavMenu />
+        </div>
+
+        @if (sidebarOpen)
+        {
+            <div class="sidebar-overlay" @onclick="CloseSidebar"></div>
+        }
     }
 
     <main>
         <div class="top-row px-4 d-flex justify-content-between align-items-center flex-wrap">
             <div class="d-flex align-items-center gap-2 flex-grow-1">
-                <button class="btn btn-link p-0 d-md-none hamburger-btn" @onclick="ToggleSidebar" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+                @if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
+                {
+                    <button class="btn btn-link p-0 d-md-none hamburger-btn" @onclick="ToggleSidebar" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                }
                 @if (!string.IsNullOrEmpty(UserStateService.CurrentUserId))
                 {
                     @if (currentUser != null)
@@ -29,8 +37,8 @@
                         <span class="me-2">
                             <i class="bi bi-person-circle"></i> <strong>@currentUser.FirstName @currentUser.LastName</strong>
                         </span>
-                        <button class="btn btn-link p-0 text-decoration-none" @onclick="ShowSwitchUserModal">
-                            Switch User
+                        <button class="btn btn-link p-0 text-decoration-none" @onclick="Logout">
+                            Log out
                         </button>
                     }
                     else if (isLoadingUser)
@@ -38,26 +46,29 @@
                         <span class="me-2 text-muted">
                             <i class="bi bi-person-circle"></i> Loading...
                         </span>
-                        <button class="btn btn-link p-0 text-decoration-none" @onclick="ShowSwitchUserModal">
-                            Switch User
+                        <button class="btn btn-link p-0 text-decoration-none" @onclick="Logout">
+                            Log out
                         </button>
                     }
                     else
                     {
-                        <!-- User ID exists but couldn't load user details - still show switch button -->
+                        <!-- User ID exists but couldn't load user details -->
                         <span class="me-2 text-warning">
                             <i class="bi bi-exclamation-triangle"></i> User Error
                         </span>
-                        <button class="btn btn-link p-0 text-decoration-none" @onclick="ShowSwitchUserModal">
-                            Switch User
+                        <button class="btn btn-link p-0 text-decoration-none" @onclick="Logout">
+                            Log out
                         </button>
                     }
                 }
             </div>
             <div class="d-flex gap-2 align-items-center">
-                <NavLink href="/register" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-person-plus"></i> Register
-                </NavLink>
+                @if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
+                {
+                    <NavLink href="/register" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-person-plus"></i> Register
+                    </NavLink>
+                }
                 <NavLink href="/settings"
                          class="btn btn-link p-0 text-decoration-none"
                          title="Settings"
@@ -76,10 +87,7 @@
     </main>
 </div>
 
-<SwitchUserModal Show="@showSwitchModal" ShowChanged="@HandleSwitchModalChanged" />
-
 @code {
-    private bool showSwitchModal = false;
     private UserDto? currentUser;
     private bool isLoadingUser = false;
     private bool sidebarOpen = false;
@@ -159,15 +167,11 @@
         sidebarOpen = false;
     }
 
-    private void ShowSwitchUserModal()
+    private async Task Logout()
     {
-        showSwitchModal = true;
-    }
-
-    private void HandleSwitchModalChanged(bool show)
-    {
-        showSwitchModal = show;
-        StateHasChanged();
+        await AuthService.LogoutAsync();
+        await UserStateService.ClearCurrentUserAsync();
+        Navigation.NavigateTo("/login", replace: true);
     }
 
     public void Dispose()

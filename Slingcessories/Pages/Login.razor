@@ -1,0 +1,173 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using Slingcessories.Services
+@inject AuthService AuthService
+@inject UserStateService UserStateService
+@inject NavigationManager Navigation
+
+<PageTitle>Login - Slingcessories</PageTitle>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Login</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(infoMessage))
+                    {
+                        <div class="alert alert-info">@infoMessage</div>
+                    }
+
+                    <EditForm Model="@model" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText type="email" class="form-control" @bind-Value="model.Email" />
+                            <ValidationMessage For="@(() => model.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <InputText type="password" class="form-control" @bind-Value="model.Password" />
+                            <ValidationMessage For="@(() => model.Password)" />
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@isBusy">Login</button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="RequestReset" disabled="@isBusy">Forgot Password</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+            @if (showReset)
+            {
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Reset Password</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Reset Token</label>
+                            <InputText class="form-control" @bind-Value="resetToken" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Password</label>
+                            <InputText type="password" class="form-control" @bind-Value="newPassword" />
+                        </div>
+                        <button class="btn btn-success" @onclick="SubmitReset" disabled="@isBusy">Submit Reset</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly LoginModel model = new();
+    private bool isBusy;
+    private string? errorMessage;
+    private string? infoMessage;
+    private bool showReset;
+    private string resetToken = string.Empty;
+    private string newPassword = string.Empty;
+
+    private async Task HandleLogin()
+    {
+        isBusy = true;
+        errorMessage = null;
+        infoMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(model.Email, model.Password);
+            if (result is null)
+            {
+                errorMessage = "Invalid email or password.";
+                return;
+            }
+
+            await UserStateService.SetCurrentUserAsync(result.UserId);
+            Navigation.NavigateTo("/");
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task RequestReset()
+    {
+        if (string.IsNullOrWhiteSpace(model.Email))
+        {
+            errorMessage = "Enter your email first.";
+            return;
+        }
+
+        isBusy = true;
+        errorMessage = null;
+        infoMessage = null;
+
+        try
+        {
+            var token = await AuthService.ForgotPasswordAsync(model.Email);
+            showReset = true;
+            resetToken = token ?? string.Empty;
+            infoMessage = token is null
+                ? "If the account exists, reset instructions were generated."
+                : "Development token generated and auto-filled.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task SubmitReset()
+    {
+        if (string.IsNullOrWhiteSpace(resetToken) || string.IsNullOrWhiteSpace(newPassword))
+        {
+            errorMessage = "Token and new password are required.";
+            return;
+        }
+
+        isBusy = true;
+        errorMessage = null;
+        infoMessage = null;
+
+        try
+        {
+            var ok = await AuthService.ResetPasswordAsync(model.Email, resetToken, newPassword);
+            if (!ok)
+            {
+                errorMessage = "Reset failed. Check token and password rules.";
+                return;
+            }
+
+            showReset = false;
+            infoMessage = "Password reset successful. You can log in now.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

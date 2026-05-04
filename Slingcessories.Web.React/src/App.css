@@ -32,3 +32,23 @@ body {
 .App {
   min-height: 100vh;
 }
+
+.app-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+}
+
+.logout-button {
+  padding: 8px 16px;
+  background-color: #d9534f;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.logout-button:hover {
+  background-color: #c9302c;
+}

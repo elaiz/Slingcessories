@@ -1,10 +1,20 @@
 ﻿@using Slingcessories.Services
 @inject UserStateService UserStateService
+@inject AuthService AuthService
 @inject NavigationManager Navigation
 
 <Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        @if (RequiresAuthentication(routeData.PageType) && string.IsNullOrEmpty(UserStateService.CurrentUserId))
+        {
+            <LayoutView Layout="@typeof(MainLayout)">
+                <RedirectToLogin />
+            </LayoutView>
+        }
+        else
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        }
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
@@ -18,17 +28,23 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        await AuthService.InitializeAsync();
         await UserStateService.InitializeAsync();
-        
-        // If no user is selected and not already on register page, redirect to home
-        // Home will handle the logic of showing register if no users exist
+
+        // If no user is selected, force unauthenticated users to login.
         if (string.IsNullOrEmpty(UserStateService.CurrentUserId))
         {
             var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
-            if (!currentPath.StartsWith("register", StringComparison.OrdinalIgnoreCase))
+            if (!currentPath.StartsWith("login", StringComparison.OrdinalIgnoreCase))
             {
-                Navigation.NavigateTo("/", replace: true);
+                Navigation.NavigateTo("/login", replace: true);
             }
         }
+    } // Closing brace for OnInitializedAsync method
+
+    private bool RequiresAuthentication(Type pageType)
+    {
+        return pageType != typeof(Pages.Login)
+            && pageType != typeof(Pages.Register);
     }
 }

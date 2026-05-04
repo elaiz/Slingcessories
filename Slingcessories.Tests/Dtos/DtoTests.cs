@@ -330,4 +330,59 @@ public class DtoTests
         dto.Name.Should().Be("Laptops");
         dto.CategoryId.Should().Be(10);
     }
+
+    // Auth DTO Tests
+    [Fact]
+    public void AuthLoginDto_Properties_AreAccessible()
+    {
+        var dto = new AuthLoginDto("john@test.com", "password123", "Slingcessories.Blazor");
+
+        dto.Email.Should().Be("john@test.com");
+        dto.Password.Should().Be("password123");
+        dto.ClientId.Should().Be("Slingcessories.Blazor");
+    }
+
+    [Fact]
+    public void AuthRegisterDto_Properties_AreAccessible()
+    {
+        var dto = new AuthRegisterDto("John", "Doe", "john@test.com", "password123", "Slingcessories.React");
+
+        dto.FirstName.Should().Be("John");
+        dto.LastName.Should().Be("Doe");
+        dto.Email.Should().Be("john@test.com");
+        dto.Password.Should().Be("password123");
+        dto.ClientId.Should().Be("Slingcessories.React");
+    }
+
+    [Fact]
+    public void ForgotPasswordDto_Properties_AreAccessible()
+    {
+        var dto = new ForgotPasswordDto("john@test.com");
+
+        dto.Email.Should().Be("john@test.com");
+    }
+
+    [Fact]
+    public void ResetPasswordDto_Properties_AreAccessible()
+    {
+        var dto = new ResetPasswordDto("john@test.com", "token123", "newPassword123");
+
+        dto.Email.Should().Be("john@test.com");
+        dto.Token.Should().Be("token123");
+        dto.NewPassword.Should().Be("newPassword123");
+    }
+
+    [Fact]
+    public void AuthResponseDto_Properties_AreAccessible()
+    {
+        var expires = DateTime.UtcNow.AddHours(1);
+        var dto = new AuthResponseDto("jwt-token", expires, "user-1", "john@test.com", "John", "Doe");
+
+        dto.Token.Should().Be("jwt-token");
+        dto.ExpiresAtUtc.Should().Be(expires);
+        dto.UserId.Should().Be("user-1");
+        dto.Email.Should().Be("john@test.com");
+        dto.FirstName.Should().Be("John");
+        dto.LastName.Should().Be("Doe");
+    }
 }
