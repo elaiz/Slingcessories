@@ -3,11 +3,14 @@ import { Accessory } from '../types';
 import { accessoriesApi } from '../services/api';
 import './AccessoriesList.css';
 
-export default function AccessoriesList() {
+interface Props {
+  filterWishlist?: boolean;
+}
+
+export default function AccessoriesList({ filterWishlist }: Props) {
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterWishlist, setFilterWishlist] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     loadAccessories();
@@ -40,38 +43,21 @@ export default function AccessoriesList() {
   };
 
   if (loading) {
-    return <div className="loading">Loading accessories...</div>;
+    return <div className="status-message">Loading accessories...</div>;
   }
 
   if (error) {
-    return <div className="error">Error: {error}</div>;
+    return <div className="status-message status-error">Error: {error}</div>;
   }
+
+  const pageTitle =
+    filterWishlist === true ? 'Wishlist' :
+    filterWishlist === false ? 'Accessories' :
+    'Slingshot Accessories';
 
   return (
     <div className="accessories-list">
-      <div className="header">
-        <h1>Slingshot Accessories</h1>
-        <div className="filters">
-          <button 
-            className={filterWishlist === undefined ? 'active' : ''}
-            onClick={() => setFilterWishlist(undefined)}
-          >
-            All
-          </button>
-          <button 
-            className={filterWishlist === false ? 'active' : ''}
-            onClick={() => setFilterWishlist(false)}
-          >
-            Owned
-          </button>
-          <button 
-            className={filterWishlist === true ? 'active' : ''}
-            onClick={() => setFilterWishlist(true)}
-          >
-            Wishlist
-          </button>
-        </div>
-      </div>
+      <h1 className="page-title">{pageTitle}</h1>
 
       <div className="accessories-grid">
         {accessories.map((accessory) => (
@@ -83,13 +69,13 @@ export default function AccessoriesList() {
               <h3>{accessory.title}</h3>
               <p className="category">
                 {accessory.categoryName}
-                {accessory.subcategoryName && ` > ${accessory.subcategoryName}`}
+                {accessory.subcategoryName && ` › ${accessory.subcategoryName}`}
               </p>
-              
-              {accessory.price && (
+
+              {accessory.price != null && (
                 <p className="price">${accessory.price.toFixed(2)}</p>
               )}
-              
+
               {accessory.slingshotDescriptions && accessory.slingshotDescriptions.length > 0 && (
                 <div className="slingshots">
                   <strong>For:</strong>
@@ -99,7 +85,7 @@ export default function AccessoriesList() {
                       const quantity = slingshotId ? accessory.slingshotQuantities[slingshotId] : undefined;
                       return (
                         <li key={idx}>
-                          {desc} 
+                          {desc}
                           {quantity && ` (Qty: ${quantity})`}
                         </li>
                       );
@@ -110,15 +96,15 @@ export default function AccessoriesList() {
 
               <div className="actions">
                 {accessory.url && (
-                  <a href={accessory.url} target="_blank" rel="noopener noreferrer">
+                  <a href={accessory.url} target="_blank" rel="noopener noreferrer" className="btn-view">
                     View Product
                   </a>
                 )}
-                <button onClick={() => handleDelete(accessory.id)} className="delete-btn">
+                <button onClick={() => handleDelete(accessory.id)} className="btn-delete">
                   Delete
                 </button>
               </div>
-              
+
               {accessory.wishlist && (
                 <span className="wishlist-badge">Wishlist</span>
               )}
@@ -128,7 +114,7 @@ export default function AccessoriesList() {
       </div>
 
       {accessories.length === 0 && (
-        <div className="no-results">No accessories found</div>
+        <div className="status-message">No accessories found</div>
       )}
     </div>
   );

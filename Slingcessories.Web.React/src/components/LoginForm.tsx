@@ -1,7 +1,12 @@
 import { FormEvent, useState } from 'react';
-import { authApi } from '../services/api';
+import { authApi, UserInfo } from '../services/api';
+import './LoginForm.css';
 
-export default function LoginForm({ onLoggedIn }: { onLoggedIn: () => void }) {
+interface Props {
+  onLoggedIn: (user: UserInfo) => void;
+}
+
+export default function LoginForm({ onLoggedIn }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -18,12 +23,12 @@ export default function LoginForm({ onLoggedIn }: { onLoggedIn: () => void }) {
     setMessage(null);
 
     try {
-      const ok = await authApi.login(email, password);
-      if (!ok) {
+      const user = await authApi.login(email, password);
+      if (!user) {
         setError('Invalid email or password.');
         return;
       }
-      onLoggedIn();
+      onLoggedIn(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -76,43 +81,50 @@ export default function LoginForm({ onLoggedIn }: { onLoggedIn: () => void }) {
   };
 
   return (
-    <div className="accessories-list">
-      <div className="header">
-        <h1>Login</h1>
+    <div className="login-page">
+      <div className="login-card">
+        <h1 className="login-title">Slingcessories</h1>
+        <h2 className="login-subtitle">Sign in</h2>
+
+        {error && <div className="login-alert login-alert-error">{error}</div>}
+        {message && <div className="login-alert login-alert-info">{message}</div>}
+
+        <form onSubmit={submitLogin} className="login-form">
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          </div>
+          <div className="login-actions">
+            <button type="submit" className="btn-primary" disabled={busy}>
+              {busy ? 'Signing in…' : 'Log in'}
+            </button>
+            <button type="button" className="btn-link-small" onClick={requestReset} disabled={busy}>
+              Forgot password?
+            </button>
+          </div>
+        </form>
+
+        {showReset && (
+          <div className="reset-section">
+            <h3>Reset Password</h3>
+            <div className="form-group">
+              <label htmlFor="resetToken">Reset Token</label>
+              <input id="resetToken" type="text" value={resetToken} onChange={(e) => setResetToken(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="newPassword">New Password</label>
+              <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            </div>
+            <button type="button" className="btn-primary" onClick={submitReset} disabled={busy}>
+              Submit Reset
+            </button>
+          </div>
+        )}
       </div>
-
-      {error && <div className="error">Error: {error}</div>}
-      {message && <div>{message}</div>}
-
-      <form onSubmit={submitLogin}>
-        <div>
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div>
-          <label>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={busy}>Login</button>
-          <button type="button" onClick={requestReset} disabled={busy}>Forgot Password</button>
-        </div>
-      </form>
-
-      {showReset && (
-        <div style={{ marginTop: 16 }}>
-          <h3>Reset Password</h3>
-          <div>
-            <label>Reset Token</label>
-            <input type="text" value={resetToken} onChange={(e) => setResetToken(e.target.value)} />
-          </div>
-          <div>
-            <label>New Password</label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-          </div>
-          <button type="button" onClick={submitReset} disabled={busy}>Submit Reset</button>
-        </div>
-      )}
     </div>
   );
 }

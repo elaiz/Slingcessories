@@ -1,43 +1,16 @@
+/* AccessoriesList — navy/silver theme matching Blazor */
+
 .accessories-list {
-  padding: 2rem;
+  padding: 1.5rem 0;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.header h1 {
-  margin: 0;
-  color: #333;
-}
-
-.filters {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.filters button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  background: white;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.filters button:hover {
-  background: #f5f5f5;
-}
-
-.filters button.active {
-  background: #007bff;
-  color: white;
-  border-color: #007bff;
+.page-title {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.75rem;
+  color: #001d3d;
+  font-weight: 600;
 }
 
 .accessories-grid {
@@ -47,18 +20,20 @@
 }
 
 .accessory-card {
-  border: 1px solid #ddd;
+  border: 1px solid #c9ccd1;
   border-radius: 8px;
   overflow: hidden;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .accessory-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 6px 16px rgba(0, 43, 92, 0.15);
 }
 
 .accessory-card img {
@@ -69,73 +44,83 @@
 
 .accessory-content {
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .accessory-content h3 {
-  margin: 0 0 0.5rem 0;
-  color: #333;
+  margin: 0 0 0.4rem 0;
+  color: #001d3d;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .category {
   color: #666;
-  font-size: 0.9rem;
-  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0.5rem 0;
 }
 
 .price {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: bold;
-  color: #28a745;
-  margin: 0.5rem 0;
+  color: #002b5c;
+  margin: 0.25rem 0 0.5rem 0;
 }
 
 .slingshots {
-  margin: 1rem 0;
-  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  color: #333;
 }
 
 .slingshots ul {
-  margin: 0.5rem 0 0 0;
-  padding-left: 1.5rem;
+  margin: 0.25rem 0 0 0;
+  padding-left: 1.25rem;
 }
 
 .slingshots li {
-  margin: 0.25rem 0;
+  margin: 0.2rem 0;
 }
 
 .actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 1rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
 }
 
-.actions a,
-.actions button {
-  padding: 0.5rem 1rem;
+.btn-view,
+.btn-delete {
+  padding: 0.4rem 0.9rem;
   border-radius: 4px;
-  text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
   border: none;
   transition: background 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
-.actions a {
-  background: #007bff;
-  color: white;
+.btn-view {
+  background-color: #002b5c;
+  color: #fff;
 }
 
-.actions a:hover {
-  background: #0056b3;
+.btn-view:hover {
+  background-color: #003e7e;
+  color: #fff;
 }
 
-.delete-btn {
-  background: #dc3545;
-  color: white;
+.btn-delete {
+  background-color: #b32121;
+  color: #fff;
 }
 
-.delete-btn:hover {
-  background: #c82333;
+.btn-delete:hover {
+  background-color: #8e1a1a;
 }
 
 .wishlist-badge {
@@ -143,19 +128,22 @@
   top: 10px;
   right: 10px;
   background: #ffc107;
-  color: #333;
-  padding: 0.25rem 0.75rem;
+  color: #001d3d;
+  padding: 0.2rem 0.65rem;
   border-radius: 12px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: bold;
 }
 
-.loading,
-.error,
-.no-results {
+.status-message {
   text-align: center;
   padding: 2rem;
-  font-size: 1.1rem;
+  font-size: 1rem;
+  color: #555;
+}
+
+.status-error {
+  color: #b32121;
 }
 
 .error {

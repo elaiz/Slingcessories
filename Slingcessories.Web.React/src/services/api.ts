@@ -99,8 +99,14 @@ type ForgotPasswordResponse = {
   resetToken?: string;
 };
 
+export type UserInfo = {
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
 export const authApi = {
-  login: async (email: string, password: string): Promise<boolean> => {
+  login: async (email: string, password: string): Promise<UserInfo | null> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
@@ -110,12 +116,12 @@ export const authApi = {
     });
 
     if (!response.ok) {
-      return false;
+      return null;
     }
 
     const payload = (await response.json()) as AuthResponse;
     setAuthToken(payload.token);
-    return true;
+    return { firstName: payload.firstName, lastName: payload.lastName, email: payload.email };
   },
 
   forgotPassword: async (email: string): Promise<string | null> => {

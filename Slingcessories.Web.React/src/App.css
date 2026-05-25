@@ -1,53 +1,215 @@
+/* ── Theme variables — mirrors Blazor app.css ── */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  --color-navy: #002b5c;
+  --color-navy-dark: #001d3d;
+  --color-navy-accent: #003e7e;
+  --color-silver: #c9ccd1;
+  --color-silver-light: #e2e4e7;
+  --color-silver-dark: #a9adb3;
+  --color-focus-ring: #005fa3;
+
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  line-height: 1.5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  min-width: 320px;
   min-height: 100vh;
-  background: #f5f5f5;
-  color: #333;
+  background-color: #ffffff;
+  color: var(--color-navy-dark);
 }
 
 #root {
   min-height: 100vh;
 }
 
-.App {
+/* ── Page layout ── */
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 
-.app-header {
+main {
+  flex: 1;
   display: flex;
-  justify-content: flex-end;
-  padding: 12px 16px;
+  flex-direction: column;
 }
 
-.logout-button {
-  padding: 8px 16px;
-  background-color: #d9534f;
+/* ── Sidebar ── */
+.sidebar {
+  background-image: linear-gradient(180deg, var(--color-navy) 0%, #3a0647 70%);
   color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
 }
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* ── Top row ── */
+.top-row {
+  background-color: #f7f7f7;
+  border-bottom: 1px solid #d6d5d5;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.top-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.top-row-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--color-navy-dark);
+}
+
+.user-icon {
+  font-size: 1rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--color-navy);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-link:hover {
+  color: var(--color-navy-accent);
+  text-decoration: underline;
+}
+
+/* ── Hamburger (mobile only) ── */
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.25rem;
+  background-color: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.hamburger-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.navbar-toggler-icon {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%280,0,0,0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
+}
+
+/* ── Content ── */
+.content {
+  padding: 1rem 2rem;
+  flex: 1;
+}
+
+/* ── Mobile ── */
+@media (max-width: 640.98px) {
+  .hamburger-btn {
+    display: inline-flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100vh;
+    z-index: 1050;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+  }
+
+  .top-row {
+    padding: 0 0.75rem;
+  }
+
+  .top-row-left {
+    gap: 0.4rem;
+  }
+
+  .btn-link,
+  .user-info {
+    font-size: 0.75rem;
+  }
+}
+
+/* ── Desktop ── */
+@media (min-width: 641px) {
+  .page {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    width: 250px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+  }
+
+  .hamburger-btn {
+    display: none;
+  }
+}
+
 
 .logout-button:hover {
   background-color: #c9302c;
