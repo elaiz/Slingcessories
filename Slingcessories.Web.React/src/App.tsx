@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import AccessoriesList from './components/AccessoriesList'
 import LoginForm from './components/LoginForm'
 import NavMenu, { NavView } from './components/NavMenu'
+import SlingshotsList from './components/SlingshotsList'
+import CategoriesPage from './components/CategoriesPage'
+import SettingsPage from './components/SettingsPage'
+import HomePage from './components/HomePage'
+import RegisterForm from './components/RegisterForm'
 import './App.css'
 import { clearAuthToken, getAuthToken } from './auth'
 import { UserInfo } from './services/api'
@@ -9,8 +14,9 @@ import { UserInfo } from './services/api'
 function App() {
   const [authenticated, setAuthenticated] = useState<boolean>(false)
   const [user, setUser] = useState<UserInfo | null>(null)
-  const [currentView, setCurrentView] = useState<NavView>('all')
+  const [currentView, setCurrentView] = useState<NavView>('home')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showRegister, setShowRegister] = useState(false)
 
   useEffect(() => {
     setAuthenticated(!!getAuthToken())
@@ -19,35 +25,56 @@ function App() {
   const handleLoggedIn = (userInfo: UserInfo) => {
     setAuthenticated(true)
     setUser(userInfo)
+    setCurrentView('home')
   }
 
   const handleLogout = () => {
     clearAuthToken()
     setAuthenticated(false)
     setUser(null)
-    setCurrentView('all')
+    setCurrentView('home')
+    setShowRegister(false)
   }
 
-  const filterWishlist =
-    currentView === 'wishlist' ? true :
-    currentView === 'accessories' ? false :
-    undefined
+  const navigate = (view: NavView) => {
+    setCurrentView(view)
+    setSidebarOpen(false)
+  }
 
   if (!authenticated) {
+    if (showRegister) {
+      return (
+        <div className="App">
+          <RegisterForm
+            onRegistered={handleLoggedIn}
+            onBackToLogin={() => setShowRegister(false)}
+          />
+        </div>
+      )
+    }
     return (
       <div className="App">
-        <LoginForm onLoggedIn={handleLoggedIn} />
+        <LoginForm onLoggedIn={handleLoggedIn} onRegister={() => setShowRegister(true)} />
       </div>
     )
+  }
+
+  const renderContent = () => {
+    switch (currentView) {
+      case 'home': return <HomePage onNavigate={navigate} />
+      case 'accessories': return <AccessoriesList filterWishlist={false} />
+      case 'wishlist': return <AccessoriesList filterWishlist={true} />
+      case 'slingshots': return <SlingshotsList />
+      case 'settings': return <SettingsPage onNavigate={navigate} />
+      case 'categories': return <CategoriesPage onBack={() => navigate('settings')} />
+      default: return <HomePage onNavigate={navigate} />
+    }
   }
 
   return (
     <div className="page">
       <div className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
-        <NavMenu
-          currentView={currentView}
-          onNavigate={(v) => { setCurrentView(v); setSidebarOpen(false) }}
-        />
+        <NavMenu currentView={currentView} onNavigate={navigate} />
       </div>
 
       {sidebarOpen && (
@@ -73,12 +100,12 @@ function App() {
             <button className="btn-link" onClick={handleLogout}>Log out</button>
           </div>
           <div className="top-row-right">
-            <button className="btn-link">Settings</button>
+            <button className="btn-link" onClick={() => navigate('settings')}>Settings</button>
           </div>
         </div>
 
         <article className="content">
-          <AccessoriesList filterWishlist={filterWishlist} />
+          {renderContent()}
         </article>
       </main>
     </div>

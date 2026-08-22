@@ -4,9 +4,10 @@ import './LoginForm.css';
 
 interface Props {
   onLoggedIn: (user: UserInfo) => void;
+  onRegister: () => void;
 }
 
-export default function LoginForm({ onLoggedIn }: Props) {
+export default function LoginForm({ onLoggedIn, onRegister }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -107,6 +108,13 @@ export default function LoginForm({ onLoggedIn }: Props) {
             </button>
           </div>
         </form>
+
+        <div className="login-register-link">
+          Don't have an account?{' '}
+          <button type="button" className="btn-link-small" onClick={onRegister}>
+            Register
+          </button>
+        </div>
 
         {showReset && (
           <div className="reset-section">

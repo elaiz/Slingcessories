@@ -145,3 +145,10 @@
   font-size: 1rem;
   color: #001d3d;
 }
+
+.login-register-link {
+  margin-top: 1.25rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #555;
+}
