@@ -42,3 +42,25 @@ export interface Slingshot {
   model: string;
   color: string;
 }
+
+export interface CreateSlingshot {
+  year: number;
+  model: string;
+  color: string;
+  userId: string;
+}
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export interface RegisterUser {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  clientId: string;
+}
